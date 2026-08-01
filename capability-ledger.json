@@ -38,6 +38,141 @@
     },
 
     {
+      "id": "evolution.change-events",
+      "name": "Change event recording (standards, materials, processes, suppliers, evidence, experts)",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": [
+          "prisma/schema.prisma",
+          "src/app/api/evolution/change-events/route.ts",
+          "prisma/migrations/20260801120000_knowledge_evolution_engine/migration.sql"
+        ],
+        "tests": ["tests/evolution-api.spec.ts"]
+      },
+      "notes": "Records that something in the world changed, as a first-class auditable fact. Recording is deliberately separate from propagating: a detected change is a fact, acting on it is a decision, and the two are audited independently. Validated, authenticated, and rejected when unexplained."
+    },
+    {
+      "id": "evolution.impact-propagation",
+      "name": "Deterministic impact propagation through the knowledge dependency graph",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": [
+          "src/lib/evolution/propagation.ts",
+          "src/lib/evolution/service.ts",
+          "src/app/api/evolution/change-events/[id]/propagate/route.ts"
+        ],
+        "tests": ["tests/evolution-core.spec.ts", "tests/evolution-integration.spec.ts", "tests/evolution-api.spec.ts"]
+      },
+      "notes": "Pure deterministic function: no I/O, no model, byte-identical output for identical input, order-stable. Traces direct dependencies and transitive derivation chains breadth-first, records the full path for replay, honours revision pinning, raises declared criticality to a change-type floor (retracted evidence is BLOCKING however it was declared), merges duplicate dependencies to the most severe, and refuses to reopen RETIRED or SUPERSEDED knowledge. No LLM is involved at any point."
+    },
+    {
+      "id": "evolution.currency-decay",
+      "name": "Time-based confidence decay and currency scoring",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": [
+          "src/lib/evolution/decay.ts",
+          "src/lib/evolution/currency.ts",
+          "src/lib/evolution/config.ts",
+          "config/evolution-weights.json",
+          "src/app/api/knowledge/[id]/currency/route.ts"
+        ],
+        "tests": ["tests/evolution-core.spec.ts", "tests/evolution-integration.spec.ts", "tests/evolution-api.spec.ts"]
+      },
+      "notes": "Half-life decay per evidence class from a versioned config file, not from code, so weight changes are auditable. Separates trust (how well evidenced it was) from currency (how far it can be relied on today). Penalties apply once per criticality tier rather than per occurrence, so ten consequences of one standard revision read as one problem. Every term appears in `breakdown` with its numeric effect, and a test asserts the breakdown sums exactly to the displayed score. Knowledge with no declared evidence decays fastest (UNKNOWN), failing closed rather than flattering undocumented claims."
+    },
+    {
+      "id": "evolution.revalidation-workflow",
+      "name": "Human revalidation workflow with separation of duties",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": [
+          "src/lib/evolution/service.ts",
+          "src/app/api/evolution/tasks/route.ts",
+          "src/app/api/evolution/tasks/[id]/resolve/route.ts",
+          "src/app/(dashboard)/evolution/page.tsx"
+        ],
+        "tests": ["tests/evolution-integration.spec.ts", "tests/evolution-api.spec.ts"]
+      },
+      "notes": "Queue ordered by risk (BLOCKING before MAJOR) rather than recency. Resolution requires a rationale of at least 10 characters and is refused without one. An author cannot resolve revalidation on knowledge they created — enforced in the route and asserted by a test. Knowledge stays flagged while any other task remains open. Decay alone never restores currency; only human revalidation does, because time does not re-verify anything."
+    },
+    {
+      "id": "evolution.status-history",
+      "name": "Immutable status history — why knowledge changed",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["prisma/schema.prisma", "src/lib/evolution/service.ts"],
+        "tests": ["tests/evolution-integration.spec.ts", "tests/evolution-api.spec.ts"]
+      },
+      "notes": "Append-only record of every currency status transition with its cause: the triggering change event, the resolving task, the actor, the engine version, and a human-readable reason. A test asserts the complete ordered history across a flag-then-resolve cycle."
+    },
+    {
+      "id": "evolution.reconciliation",
+      "name": "Rule 1.3 reconciliation on every propagation run",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/lib/evolution/propagation.ts", "src/lib/evolution/service.ts"],
+        "tests": ["tests/evolution-core.spec.ts", "tests/evolution-integration.spec.ts"]
+      },
+      "notes": "Every run reports dependencies scanned, candidates matched, impacted, skipped with per-record reasons, status transitions, tasks created, history rows, and currency recomputes — and asserts candidates equal impacted plus skipped. A mismatch throws ReconciliationError inside a transaction, so a non-reconciling run leaves no partial state. Tests assert both the arithmetic and that persisted row counts equal the reported counts."
+    },
+    {
+      "id": "evolution.score-reproducibility",
+      "name": "Currency recomputation reproduces stored values exactly",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/lib/evolution/service.ts"],
+        "tests": ["tests/evolution-integration.spec.ts"]
+      },
+      "notes": "recomputeAllCurrency() re-derives every score from source rows and reports drift. A test asserts zero drift across score, decay component, breakdown JSON, and engine version. Engine version stamps both the algorithm version and the weights-file version, because a score is only reproducible if you know both."
+    },
+    {
+      "id": "evolution.dashboard",
+      "name": "Knowledge Evolution dashboard",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/(dashboard)/evolution/page.tsx", "src/components/layout/sidebar.tsx"],
+        "tests": ["tests/evolution-api.spec.ts"]
+      },
+      "notes": "Reachable from the sidebar. Renders the revalidation queue ordered by risk, lowest-currency knowledge, and the change-event feed, all from real queries. The empty state is written as the desired outcome ('every tracked dependency is still holding') rather than as a null result. The underlying data is covered by the API tests; the page itself has no rendering test yet."
+    },
+    {
+      "id": "evolution.standards-watcher",
+      "name": "Automated watcher polling external standards sources",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Change events are currently recorded by an authenticated caller (human or integration) via the API. Nothing polls ISO/ASME/SAE/FAA sources automatically. The repository still has no job queue, scheduler, or background worker, so this needs a runtime substrate before it can be built. The propagation half of Phase 9 is complete and tested; the detection half is not."
+    },
+    {
+      "id": "evolution.decay-sweep-job",
+      "name": "Scheduled decay sweep",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "recomputeAllCurrency() exists and is tested, but nothing runs it on a schedule. Currency is currently recomputed on read of a single knowledge object and during propagation. Same missing substrate as evolution.standards-watcher."
+    },
+    {
+      "id": "test.integration-harness",
+      "name": "Real-Postgres integration test harness",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["tests/helpers/test-db.ts", "tests/helpers/fixtures.ts", "vitest.config.ts"],
+        "tests": ["tests/test-db.spec.ts"]
+      },
+      "notes": "Boots PGlite — an actual Postgres 17 build compiled to WASM — applies the real prisma/schema.prisma, and serves a real Prisma Client. Nothing about the data layer is mocked, satisfying Rule 2. Each test gets an isolated database. The DDL snapshot regenerates itself whenever schema.prisma is newer, so a stale artifact cannot silently fail every test. Fixtures are prefixed SYNTHETIC so seeded rows are unmistakable in any database they reach."
+    },
+
+    {
       "id": "m1.typed-quantities",
       "name": "M1 — Quantity type with unit, dimension, uncertainty, conditions",
       "status": "ABSENT",
@@ -881,10 +1016,10 @@
     {
       "id": "test.infrastructure",
       "name": "Test runner and harness",
-      "status": "PARTIAL",
+      "status": "REAL",
       "mechanism": null,
       "evidence": { "files": ["vitest.config.ts", "package.json"], "tests": ["tests/ledger.spec.ts", "tests/capabilities-api.spec.ts"] },
-      "notes": "Added during Phase 0 solely to make the ledger enforceable. Before this audit the repository had no test script, no test runner, no test dependency, and zero test files. Marked PARTIAL rather than REAL because there is no integration test against a real database yet — Rule 2 requires that for any subsystem to count as complete."
+      "notes": "Added during Phase 0 to make the ledger enforceable. Before this audit the repository had no test script, no test runner, no test dependency, and zero test files. Promoted from PARTIAL to REAL once tests/test-db.spec.ts proved the harness runs against real Postgres, satisfying Rule 2's requirement that a subsystem be exercised end to end rather than mocked."
     }
   ]
 }

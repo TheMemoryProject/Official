@@ -230,11 +230,25 @@ describe('capability ledger — the ledger describes itself', () => {
     expect(counts.REAL).toBe(realCapabilities.length);
   });
 
-  // Documents the Phase 0 baseline. When a later phase genuinely promotes a capability
-  // to REAL, this number moves deliberately and the change is visible in review.
-  it('records the Phase 0 baseline of REAL capabilities', () => {
+  // Pins the exact set of capabilities claimed REAL. Promoting anything to REAL must
+  // edit this list, so the claim is always a deliberate, reviewable act rather than a
+  // side effect of editing JSON.
+  it('records the current set of REAL capabilities', () => {
     const ids = realCapabilities.map((c) => c.id).sort();
-    expect(ids).toEqual(['platform.capabilities-api', 'platform.capability-ledger']);
+    expect(ids).toEqual([
+      'evolution.change-events',
+      'evolution.currency-decay',
+      'evolution.dashboard',
+      'evolution.impact-propagation',
+      'evolution.reconciliation',
+      'evolution.revalidation-workflow',
+      'evolution.score-reproducibility',
+      'evolution.status-history',
+      'platform.capabilities-api',
+      'platform.capability-ledger',
+      'test.infrastructure',
+      'test.integration-harness',
+    ]);
   });
 });
 
@@ -250,7 +264,7 @@ describe('capability ledger — no silent overclaim', () => {
     ).toEqual([]);
   });
 
-  it('no mechanism M1–M9 is claimed REAL at Phase 0', () => {
+  it('no differentiating mechanism M1–M9 is claimed REAL before its phase is built', () => {
     const offenders = LEDGER.capabilities.filter(
       (c) => c.mechanism !== null && c.status === 'REAL'
     );

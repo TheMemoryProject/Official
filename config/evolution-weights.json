@@ -1,0 +1,74 @@
+{
+  "version": "evolution-weights@1.0.0",
+  "description": "Versioned, auditable inputs to the Knowledge Evolution Engine. Weights live here rather than in code so that a change to how currency is computed is visible in review and attributable to a commit. The engine records which version produced every score.",
+
+  "decay": {
+    "description": "Half-life in days per evidence class. Confidence in a claim decays toward `floor` on this half-life without human action. Field data ages differently from an analytical derivation because the world it described moves.",
+    "halfLifeDays": {
+      "PHYSICAL_TEST": 2555,
+      "FIELD_DATA": 1095,
+      "QUALIFIED_SIMULATION": 1460,
+      "ANALYTICAL_DERIVATION": 3650,
+      "PUBLISHED_STANDARD": 1825,
+      "PEER_REVIEWED": 2920,
+      "INTERNAL_REPORT": 1095,
+      "EXPERT_ASSERTION": 730,
+      "VENDOR_CLAIM": 365,
+      "ANECDOTE": 180,
+      "UNKNOWN": 365
+    },
+    "floor": 10,
+    "ceiling": 100
+  },
+
+  "criticalityImpact": {
+    "description": "Points deducted from currency when an unresolved impact of this criticality exists.",
+    "BLOCKING": 60,
+    "MAJOR": 30,
+    "MINOR": 8
+  },
+
+  "criticalityTransition": {
+    "description": "Currency status a knowledge object transitions to when impacted at this criticality. MINOR impacts are recorded and surfaced but do not gate the knowledge, because gating on noise trains reviewers to dismiss everything.",
+    "BLOCKING": "REVALIDATION_REQUIRED",
+    "MAJOR": "REVALIDATION_REQUIRED",
+    "MINOR": "CURRENT"
+  },
+
+  "criticalityCreatesTask": {
+    "description": "Whether an impact at this criticality opens a human revalidation task.",
+    "BLOCKING": true,
+    "MAJOR": true,
+    "MINOR": false
+  },
+
+  "changeTypeCriticalityFloor": {
+    "description": "Some change types are severe enough that they raise a dependency's declared criticality. A retracted piece of evidence invalidates a conclusion regardless of how the dependency was declared. Values are the minimum criticality applied; the more severe of (declared, floor) wins.",
+    "EVIDENCE_RETRACTED": "BLOCKING",
+    "STANDARD_WITHDRAWN": "BLOCKING",
+    "FIELD_FAILURE_REPORTED": "BLOCKING",
+    "REGULATION_PUBLISHED": "MAJOR",
+    "STANDARD_REVISED": "MAJOR",
+    "MATERIAL_SPEC_CHANGED": "MAJOR",
+    "PROCESS_CHANGED": "MAJOR",
+    "SUPPLIER_CHANGED": "MAJOR",
+    "EVIDENCE_SUPERSEDED": "MAJOR",
+    "KNOWLEDGE_SUPERSEDED": "MAJOR",
+    "EXPERT_DEPARTED": "MINOR"
+  },
+
+  "statusFloor": {
+    "description": "Currency score is clamped to at most this value while in the given status, so a recently-verified item cannot display as healthy while it carries an unresolved blocking impact.",
+    "REVALIDATION_REQUIRED": 55,
+    "UNDER_REVALIDATION": 65,
+    "SUPERSEDED": 20,
+    "RETIRED": 0
+  },
+
+  "grading": {
+    "description": "Currency bands for display. These are presentation thresholds only; no decision logic keys off them.",
+    "CURRENT": 80,
+    "AGING": 60,
+    "STALE": 40
+  }
+}

@@ -70,6 +70,7 @@ export function Sidebar({ userRole = 'ENGINEER' }: SidebarProps) {
     { name: 'Queue Monitor', href: '/ingestion/queue', icon: Clock },
     { name: 'Knowledge Marketplace', href: '/marketplace', icon: Store },
     { name: 'Partner Network', href: '/marketplace/partners', icon: Building2 },
+    { name: 'Knowledge Evolution', href: '/evolution', icon: Activity },
     { name: 'Governance Center', href: '/governance', icon: ShieldCheck },
     { name: 'Quality Dashboard', href: '/governance/quality', icon: Award },
     { name: 'Integrity Scanner', href: '/governance/integrity', icon: ShieldAlert },

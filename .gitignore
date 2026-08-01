@@ -28,3 +28,8 @@ lerna-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Derived from prisma/schema.prisma by the integration test harness, which regenerates
+# it automatically whenever the schema is newer. Committing it would only create diff
+# noise and a second source of truth.
+/prisma/ddl-snapshot.sql
