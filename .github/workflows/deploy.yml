@@ -1,12 +1,14 @@
-name: Deploy to GitHub Pages
+name: CI and GitHub Pages
 
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -15,63 +17,107 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  # Gate: nothing publishes unless typecheck, tests and build all pass.
+  # The previous version of this workflow ran `npm run build || true`, which meant a
+  # broken build still deployed. A green badge that cannot go red is worse than none.
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Build Next.js App
-        run: npm run build || true
+      - name: Typecheck
+        run: npm run typecheck
 
-      - name: Prepare Static Site Artifact
+      # Includes tests/ledger.spec.ts, which fails the build if any capability is
+      # marked REAL without a test that actually runs, and the integration suite,
+      # which runs against a real in-process Postgres.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  deploy-pages:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # IMPORTANT — what GitHub Pages can and cannot host.
+      #
+      # KTN is a dynamic application: 66 API routes, cookie-based auth, middleware, and
+      # a PostgreSQL database. Every route except `/` is server-rendered on demand.
+      # GitHub Pages serves static files only and runs no server code, so it CANNOT host
+      # the application. Signing in, searching, the dashboard and every API route are
+      # impossible here by construction, not by configuration.
+      #
+      # What is published below is exactly one thing: the statically prerendered public
+      # landing page, plus the capability ledger as machine-readable JSON. The landing
+      # page renders the ledger at build time, so this surface cannot claim a capability
+      # the ledger does not mark REAL.
+      #
+      # The full application belongs on a Node host (Vercel or equivalent) with
+      # DATABASE_URL configured.
+      - name: Build landing page and ledger
+        env:
+          NEXT_PUBLIC_BASE_PATH: /Official
+          # Prisma requires a syntactically valid URL to generate and build. No query
+          # runs during the static build of `/`; this value is never connected to.
+          DATABASE_URL: "postgresql://build:build@localhost:5432/build?schema=public"
+          DIRECT_URL: "postgresql://build:build@localhost:5432/build?schema=public"
+        run: npm run build
+
+      - name: Assemble Pages artifact
         run: |
+          set -euo pipefail
           mkdir -p public_site
-          cp -r public/* public_site/ 2>/dev/null || true
-          if [ -d ".next/server/app" ]; then
-            cp .next/server/app/index.html public_site/index.html 2>/dev/null || true
-          fi
-          if [ ! -f "public_site/index.html" ]; then
-            cat << 'EOF' > public_site/index.html
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>KTN - Knowledge Translation Network</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #090d16; color: #f8fafc; margin: 0; padding: 0; display: flex; justify-center; align-items: center; min-height: 100vh; text-align: center; }
-              .card { background: #131b2e; border: 1px solid #1e293b; padding: 3rem; rounded: 1.5rem; max-width: 600px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-              h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: #38bdf8; }
-              p { font-size: 1.1rem; color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
-              a { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; }
-              a:hover { background: #1d4ed8; }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <h1>Knowledge Translation Network</h1>
-              <p>v1.0.0-RC1 Enterprise Engineering Knowledge Platform. Verified engineering knowledge, problem matcher, standards intelligence, and evidence system.</p>
-              <a href="https://github.com/TheMemoryProject/Official">View Source on GitHub</a>
-            </div>
-          </body>
-          </html>
-          EOF
-          fi
 
-      - name: Upload Pages Artifact
+          # The prerendered landing page. If it is missing, fail — do not substitute a
+          # placeholder that claims the site is something it is not.
+          if [ ! -f ".next/server/app/index.html" ]; then
+            echo "::error::Prerendered landing page not found. Refusing to publish a placeholder."
+            exit 1
+          fi
+          cp .next/server/app/index.html public_site/index.html
+
+          # Static assets, so the published page is styled rather than raw HTML.
+          mkdir -p public_site/_next
+          cp -r .next/static public_site/_next/static
+          if [ -d "public" ]; then cp -r public/. public_site/ 2>/dev/null || true; fi
+
+          # Publish the ledger itself so the claim surface is independently checkable.
+          cp capability-ledger.json public_site/capability-ledger.json
+
+          # GitHub Pages would otherwise run the output through Jekyll and drop _next.
+          touch public_site/.nojekyll
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public_site

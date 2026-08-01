@@ -14,8 +14,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { loadLedger, summarise } from '@/lib/capabilities/ledger';
 
+/**
+ * The public landing page reads the Capability Ledger at build time.
+ *
+ * This is deliberate: it makes it structurally impossible for the marketing surface to
+ * claim a capability the ledger does not support. Nothing on this page is a hand-written
+ * count, and there are no illustrative "sample" records — a page about verified
+ * engineering knowledge must not itself contain invented engineering records.
+ */
 export default function LandingPage() {
+  const ledger = loadLedger();
+  const counts = summarise(ledger);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-blue-600 selection:text-white">
       {/* Top Navbar */}
@@ -56,8 +68,17 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Discover proven, peer-verified engineering solutions across industries. Linked to evidence, known limitations, failure modes, and domain taxonomies.
+            An engineering knowledge system built so that a conclusion carries its evidence,
+            its validity range, and the date it stops being trustworthy. Scores are computed
+            deterministically, never generated. When the evidence is not there, it says so.
           </p>
+
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-full">
+            <span>
+              Pre-release. {counts.REAL} of {counts.total} capabilities are independently
+              test-verified — see the public ledger below.
+            </span>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href="/register">
@@ -79,10 +100,10 @@ export default function LandingPage() {
               <input
                 type="text"
                 readOnly
-                placeholder="Search across 10,000+ verified engineering solutions..."
+                placeholder="Search verified engineering knowledge..."
                 className="flex-1 bg-transparent text-sm focus:outline-none text-muted-foreground cursor-pointer"
               />
-              <Badge variant="verified">100% Peer Verified</Badge>
+              <Badge variant="outline">Sign in to search</Badge>
             </div>
           </div>
         </section>
@@ -101,9 +122,12 @@ export default function LandingPage() {
               <Card className="bg-card/50 border-border">
                 <CardHeader>
                   <FileCheck2 className="w-10 h-10 text-emerald-500 mb-2" />
-                  <CardTitle>Strict Verification Workflows</CardTitle>
+                  <CardTitle>Knowledge That Expires</CardTitle>
                   <CardDescription>
-                    Every solution undergoes rigorous multi-tier verification by designated domain verifiers prior to indexing.
+                    A conclusion depends on the standards, materials, processes and evidence
+                    that held when it was verified. When any of those change, every dependent
+                    conclusion is traced and flagged for re-verification — with an immutable
+                    record of why.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -111,9 +135,11 @@ export default function LandingPage() {
               <Card className="bg-card/50 border-border">
                 <CardHeader>
                   <Database className="w-10 h-10 text-blue-500 mb-2" />
-                  <CardTitle>Empirical Evidence Linking</CardTitle>
+                  <CardTitle>Computed, Not Generated</CardTitle>
                   <CardDescription>
-                    Solutions are bound to empirical test data, failure analysis logs, CAD benchmarks, and validated code.
+                    Trust and currency scores come from pure, versioned functions over typed
+                    evidence. No language model touches a score. Every number ships with the
+                    full derivation that produced it, and recomputation must reproduce it exactly.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -121,9 +147,11 @@ export default function LandingPage() {
               <Card className="bg-card/50 border-border">
                 <CardHeader>
                   <Lock className="w-10 h-10 text-purple-500 mb-2" />
-                  <CardTitle>Enterprise RBAC Security</CardTitle>
+                  <CardTitle>Fails Closed</CardTitle>
                   <CardDescription>
-                    Granular role-based access control protecting organization knowledge graphs and sensitive engineering parameters.
+                    On missing evidence or an unmet precondition the system abstains rather
+                    than guessing. An author cannot verify their own claim. Empty input never
+                    produces a passing score.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -131,51 +159,59 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Sample Verified Solutions Showcase */}
+        {/* Capability Ledger — the honest status of this build */}
         <section className="py-20 px-6 max-w-6xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-2xl font-bold tracking-tight">Recent Verified Knowledge</h3>
-              <p className="text-sm text-muted-foreground">Solutions validated with empirical test evidence</p>
-            </div>
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                View All <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight">What actually works today</h3>
+            <p className="text-sm text-muted-foreground max-w-2xl mt-1">
+              Most platforms show you a feature list. This one publishes its Capability
+              Ledger, where a feature may only be called verified if a test exercises it end
+              to end against a real database. A build-time test fails the release if this page
+              claims otherwise.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge variant="verified">VERIFIED SOLUTION</Badge>
-                <span className="text-xs text-muted-foreground font-mono">Aerospace Domain</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { key: 'REAL', label: 'Verified', tone: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' },
+              { key: 'PARTIAL', label: 'Partial', tone: 'border-amber-500/20 bg-amber-500/5 text-amber-400' },
+              { key: 'SHELL', label: 'Shell', tone: 'border-rose-500/20 bg-rose-500/5 text-rose-400' },
+              { key: 'ABSENT', label: 'Not built', tone: 'border-border bg-card/50 text-muted-foreground' },
+            ].map((s) => (
+              <div key={s.key} className={`p-5 rounded-xl border ${s.tone}`}>
+                <div className="text-3xl font-extrabold">
+                  {counts[s.key as 'REAL' | 'PARTIAL' | 'SHELL' | 'ABSENT']}
+                </div>
+                <div className="text-xs font-semibold mt-1">{s.label}</div>
               </div>
-              <h4 className="font-bold text-lg">Thermal Barrier Coating Degradation Mitigations</h4>
-              <p className="text-sm text-muted-foreground">
-                Verified protocol for ceramic matrix composite thermal endurance under high-velocity combustion cycles.
-              </p>
-              <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-emerald-500/20">
-                <span>Verifier: Senior Propulsion Lead</span>
-                <span>Evidence: 12 Test Runs</span>
-              </div>
-            </div>
-
-            <div className="p-6 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge variant="verified">VERIFIED SOLUTION</Badge>
-                <span className="text-xs text-muted-foreground font-mono">Software Infrastructure</span>
-              </div>
-              <h4 className="font-bold text-lg">Distributed Consensus Deadlock Resolution</h4>
-              <p className="text-sm text-muted-foreground">
-                Raft protocol edge-case mitigation strategy for high-latency inter-datacenter partition recovery.
-              </p>
-              <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-blue-500/20">
-                <span>Verifier: Systems Architect</span>
-                <span>Evidence: Benchmark Logs</span>
-              </div>
-            </div>
+            ))}
           </div>
+
+          <div className="space-y-3">
+            {ledger.capabilities
+              .filter((c) => c.status === 'REAL')
+              .map((c) => (
+                <div
+                  key={c.id}
+                  className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start justify-between gap-4"
+                >
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm">{c.name}</h4>
+                    <p className="text-xs text-muted-foreground font-mono mt-0.5">{c.id}</p>
+                  </div>
+                  <Badge variant="verified" className="shrink-0">
+                    TEST-VERIFIED
+                  </Badge>
+                </div>
+              ))}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Ledger version {ledger.ledgerVersion}, generated {ledger.generatedAt} from commit{' '}
+            <code className="font-mono">{ledger.commitAudited}</code>. Everything not listed
+            above is partial, a shell, or not yet built, and is recorded as such rather than
+            implied.
+          </p>
         </section>
       </main>
 
