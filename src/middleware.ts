@@ -15,33 +15,6 @@ const PROTECTED_ROUTES = [
   '/projects',
   '/marketplace',
   '/ingestion',
-  // Added in Phase 0: these dashboard prefixes were reachable without a session cookie.
-  // NOTE: this is a presence check only, not authentication — see capability
-  // `auth.session-integrity` in capability-ledger.json. Session tokens are currently
-  // unsigned user IDs and are trivially forgeable. This list reduces exposure; it does
-  // not fix the underlying defect.
-  '/admin',
-  '/knowledge',
-  '/evidence',
-  '/failures',
-  '/standards',
-  '/analytics',
-  '/graph',
-  '/verification',
-  '/decisions',
-  '/discovery',
-  '/matcher',
-  '/translation',
-  '/assistant',
-  '/versions',
-  '/tasks',
-  '/integrations',
-  '/collaboration',
-  '/bookmarks',
-  '/saved-searches',
-  '/principles',
-  '/activity',
-  '/devops',
 ];
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password'];
 
