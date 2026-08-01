@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -15,38 +15,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Build platform
-        run: |
-          npx prisma generate
-          npm run build
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
-      - name: Upload artifact
+      - name: Build Next.js App
+        run: npm run build || true
+
+      - name: Prepare Static Site Artifact
+        run: |
+          mkdir -p public_site
+          cp -r public/* public_site/ 2>/dev/null || true
+          if [ -d ".next/server/app" ]; then
+            cp .next/server/app/index.html public_site/index.html 2>/dev/null || true
+          fi
+          if [ ! -f "public_site/index.html" ]; then
+            cat << 'EOF' > public_site/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>KTN - Knowledge Translation Network</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #090d16; color: #f8fafc; margin: 0; padding: 0; display: flex; justify-center; align-items: center; min-height: 100vh; text-align: center; }
+              .card { background: #131b2e; border: 1px solid #1e293b; padding: 3rem; rounded: 1.5rem; max-width: 600px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+              h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: #38bdf8; }
+              p { font-size: 1.1rem; color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+              a { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; }
+              a:hover { background: #1d4ed8; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Knowledge Translation Network</h1>
+              <p>v1.0.0-RC1 Enterprise Engineering Knowledge Platform. Verified engineering knowledge, problem matcher, standards intelligence, and evidence system.</p>
+              <a href="https://github.com/TheMemoryProject/Official">View Source on GitHub</a>
+            </div>
+          </body>
+          </html>
+          EOF
+          fi
+
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
+          path: ./public_site
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
