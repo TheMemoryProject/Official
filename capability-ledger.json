@@ -1,0 +1,890 @@
+{
+  "ledgerVersion": "1.0.0",
+  "generatedAt": "2026-08-01",
+  "commitAudited": "351b08d",
+  "auditPhase": "PHASE_0",
+  "statusDefinitions": {
+    "REAL": "Implemented, reachable from UI or API, and covered by a test that exercises the real path end to end.",
+    "PARTIAL": "Implemented with genuine persistence or logic, but a hard dependency is missing and/or no test exercises it.",
+    "SHELL": "A route, page, model, or function exists but returns hardcoded, empty, fabricated, or trivially-derived results.",
+    "ABSENT": "Not built."
+  },
+  "rules": {
+    "realRequiresTest": "A capability may only be marked REAL if evidence.tests is non-empty, every referenced test file exists on disk, and every referenced test file is matched by the vitest include glob. Enforced by tests/ledger.spec.ts.",
+    "uiMayNotOverclaim": "No UI or marketing surface may claim a capability this ledger does not mark REAL."
+  },
+  "capabilities": [
+    {
+      "id": "platform.capability-ledger",
+      "name": "Capability Ledger (self-describing, test-enforced)",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["capability-ledger.json", "src/lib/capabilities/ledger.ts"],
+        "tests": ["tests/ledger.spec.ts"]
+      },
+      "notes": "The ledger cannot mark a capability REAL without a referenced test file that exists and is executed by the runner. The enforcement test also verifies the ledger's own schema, id uniqueness, and that no SHELL/ABSENT entry carries test evidence implying completeness."
+    },
+    {
+      "id": "platform.capabilities-api",
+      "name": "GET /api/system/capabilities",
+      "status": "REAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/system/capabilities/route.ts", "src/lib/capabilities/ledger.ts"],
+        "tests": ["tests/capabilities-api.spec.ts"]
+      },
+      "notes": "Test invokes the real route handler, which reads the real ledger file from disk, and asserts the response body matches the on-disk ledger. Demo and sales surfaces read from this endpoint."
+    },
+
+    {
+      "id": "m1.typed-quantities",
+      "name": "M1 — Quantity type with unit, dimension, uncertainty, conditions",
+      "status": "ABSENT",
+      "mechanism": "M1",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No Quantity, Unit, or Dimension model in prisma/schema.prisma. Every physical value in the schema is a bare Float/Int/String with no unit column anywhere. StructuredProblem.operatingTempMax and .pressureMax are bare numbers."
+    },
+    {
+      "id": "m1.dimensional-algebra",
+      "name": "M1 — Unit parsing and SI reduction",
+      "status": "ABSENT",
+      "mechanism": "M1",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No unit parser exists. The only unit-aware code in the repository is similarity-engine.ts:93, which does knownConstraints?.includes('Kelvin') — a substring test for a unit name, not parsing."
+    },
+    {
+      "id": "m1.dimensional-validation-gate",
+      "name": "M1 — assertDimensionallyConsistent and ingestion rejection",
+      "status": "ABSENT",
+      "mechanism": "M1",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No dimensional validation. Nothing prevents a dimensionally incoherent claim from entering the repository."
+    },
+    {
+      "id": "m1.uncertainty-propagation",
+      "name": "M1 — First-order uncertainty propagation",
+      "status": "ABSENT",
+      "mechanism": "M1",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No uncertainty representation at all."
+    },
+    {
+      "id": "m2.problem-signature",
+      "name": "M2 — Canonical Problem Signature object",
+      "status": "ABSENT",
+      "mechanism": "M2",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No ProblemSignature model. StructuredProblem exists but carries free-text primaryFunction/failureMode/phenomenon with no ontology binding, no dimensionless groups, no constraint topology, no scale band."
+    },
+    {
+      "id": "m2.ontology-tables",
+      "name": "M2 — FunctionVerb / FlowType / Regime / FailureModeClass ontologies",
+      "status": "ABSENT",
+      "mechanism": "M2",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No ontology tables. TaxonomyCategory and Tag exist but are untyped free-text labels, not a functional basis."
+    },
+    {
+      "id": "m2.invariant-index",
+      "name": "M2 — Structured retrieval over invariants",
+      "status": "ABSENT",
+      "mechanism": "M2",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "All retrieval is substring matching. No structured index over regimes or dimensionless group ranges exists."
+    },
+    {
+      "id": "m3.evidence-calculus",
+      "name": "M3 — Deterministic evidence scoring",
+      "status": "SHELL",
+      "mechanism": "M3",
+      "evidence": { "files": ["src/lib/evidence/strength-engine.ts"], "tests": [] },
+      "notes": "Seven booleans adding fixed points to a base of 40. Missing: evidence typing, directionality (nothing can refute), independence grouping, correlated-source discounting, sample size, replication, age decay, method quality. Weights are inline literals, not a versioned config file. The { score, rating, breakdown } return shape is correct and should be kept."
+    },
+    {
+      "id": "m3.correlated-source-discounting",
+      "name": "M3 — Independence groups and correlated-source discounting",
+      "status": "ABSENT",
+      "mechanism": "M3",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No independenceGroup field. Ten citations of one original test would count as ten independent sources. Compounded by the fake checksum in ingestion (see ing.content-hashing)."
+    },
+    {
+      "id": "m3.score-reproducibility",
+      "name": "M3 — recomputeAllScores and bit-for-bit reproduction",
+      "status": "ABSENT",
+      "mechanism": "M3",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No recompute function, no scorerVersion field, no stored breakdown. Scores are written once and never re-derived."
+    },
+    {
+      "id": "m4.applicability-envelope",
+      "name": "M4 — ApplicabilityEnvelope derived from evidence conditions",
+      "status": "ABSENT",
+      "mechanism": "M4",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No envelope model. VerifiedSolution has no validity range fields of any kind."
+    },
+    {
+      "id": "m4.operating-point",
+      "name": "M4 — OperatingPoint capture on query",
+      "status": "ABSENT",
+      "mechanism": "M4",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No OperatingPoint model, no UI collecting one, no inheritance from EngineeringProject."
+    },
+    {
+      "id": "m4.evaluate-applicability",
+      "name": "M4 — evaluateApplicability and envelope-first ranking",
+      "status": "ABSENT",
+      "mechanism": "M4",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No WITHIN/NEAR/OUTSIDE/UNDETERMINED evaluation. Retrieval has no concept of whether a result applies to the asker's conditions."
+    },
+    {
+      "id": "m4.extrapolation-override-audit",
+      "name": "M4 — Logged override for out-of-envelope use",
+      "status": "ABSENT",
+      "mechanism": "M4",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "SecurityAuditLog exists and could host these events, but no override concept exists to log."
+    },
+    {
+      "id": "m5.failed-approach-object",
+      "name": "M5 — Failure records as first-class objects",
+      "status": "PARTIAL",
+      "mechanism": "M5",
+      "evidence": {
+        "files": [
+          "prisma/schema.prisma",
+          "src/app/api/failures/route.ts",
+          "src/app/(dashboard)/failures/page.tsx",
+          "src/app/(dashboard)/failures/new/page.tsx"
+        ],
+        "tests": []
+      },
+      "notes": "FailureRecord is a real peer model with real CRUD and a capture form. Untested. Missing per Phase 5: signature linkage, structured failure mechanism from a shared ontology, conditions, and 'what would have to change for this to become viable'."
+    },
+    {
+      "id": "m5.failure-signature-linkage",
+      "name": "M5 — Failures retrieved alongside matching solutions",
+      "status": "ABSENT",
+      "mechanism": "M5",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "retrieval-pipeline.ts queries FailureRecord by the same substring as everything else. There is no signature-based linkage, so a failure logged in one domain will not surface against an overlapping problem in another. No priorFailures section exists in any recommendation response."
+    },
+    {
+      "id": "m6.conflict-detection",
+      "name": "M6 — Deterministic numeric / directional / envelope conflict detection",
+      "status": "ABSENT",
+      "mechanism": "M6",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No detector of any kind. Requires M1 quantities and M4 envelopes as prerequisites."
+    },
+    {
+      "id": "m6.conflict-object",
+      "name": "M6 — Conflict as a persisted knowledge artifact",
+      "status": "ABSENT",
+      "mechanism": "M6",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No Conflict model. RelationshipType enum includes a CONTRADICTS value and GraphEdge could carry it, but nothing creates such edges and no resolution workflow exists."
+    },
+    {
+      "id": "m7.transfer-analysis",
+      "name": "M7 — Cross-domain transfer analysis",
+      "status": "SHELL",
+      "mechanism": "M7",
+      "evidence": { "files": ["src/lib/translation/translation-engine.ts", "src/app/api/translation/route.ts"], "tests": [] },
+      "notes": "translationConfidence is the literal 88 in every case. Shared principles are three includes() checks for 'heat', 'fatigue', 'resonator'/'acoustic', falling back to asserting 'Structural Boundary Mechanics' regardless of content. differingConstraints and riskFactors are fixed template strings identical for every record pair."
+    },
+    {
+      "id": "m7.transfer-card",
+      "name": "M7 — Transfer Card (8 required sections)",
+      "status": "ABSENT",
+      "mechanism": "M7",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Seven of eight sections absent (SOURCE, THE INVARIANT, WHAT TRANSFERS with span support, WHAT DOES NOT with reasons, ADAPTATION, RESIDUAL RISK, PRIOR FAILURES); the eighth (CONFIDENCE) is a constant."
+    },
+    {
+      "id": "m7.structural-candidate-generation",
+      "name": "M7 — Invariant-first candidate generation, vector as reranker only",
+      "status": "ABSENT",
+      "mechanism": "M7",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "There is no vector search and no invariant index, so the ordering the directive requires cannot be asserted either way. Both halves must be built."
+    },
+    {
+      "id": "m7.transfer-outcome-feedback",
+      "name": "M7 — Recording transfer outcomes to train transfer confidence",
+      "status": "ABSENT",
+      "mechanism": "M7",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "The compounding data asset. Nothing records whether a transfer a user acted on actually worked."
+    },
+    {
+      "id": "m8.span-retrieval",
+      "name": "M8 — Retrieval returns spans with document offsets",
+      "status": "ABSENT",
+      "mechanism": "M8",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No Span model. DocumentPage exists but has no character offsets. Citations point at whole records, so no claim can be highlighted in its source."
+    },
+    {
+      "id": "m8.answer-composition",
+      "name": "M8 — Grounded answer composition",
+      "status": "PARTIAL",
+      "mechanism": "M8",
+      "evidence": {
+        "files": ["src/lib/assistant/retrieval-pipeline.ts", "src/app/api/assistant/chat/route.ts"],
+        "tests": []
+      },
+      "notes": "Real Prisma queries returning real citations with real IDs and links. Answer text is string concatenation of whole summary fields, so it is verbatim-grounded by construction. But retrieval is `contains: <entire query string>`, which will not match natural-language questions — see m8.abstention. Confidence falls back to a hardcoded 80 at line 151 when no primary knowledge entry exists."
+    },
+    {
+      "id": "m8.post-generation-verifier",
+      "name": "M8 — Deterministic sentence-level verifier",
+      "status": "ABSENT",
+      "mechanism": "M8",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No sentence-to-span tagging, no span-existence check, no numeric traceability check, no entailment check, no deletion log, no groundednessRatio. This is the component the directive calls 'the product'."
+    },
+    {
+      "id": "m8.abstention",
+      "name": "M8 — Mandatory abstention on missing evidence",
+      "status": "PARTIAL",
+      "mechanism": "M8",
+      "evidence": { "files": ["src/lib/assistant/retrieval-pipeline.ts"], "tests": [] },
+      "notes": "An explicit abstention path exists with a missingInformation field and non-apologetic copy — the cultural battle is already won here. But it triggers because substring retrieval fails on nearly all natural-language input, not because a verifier rejected unsupported content. Any abstention-rate measurement taken before retrieval is fixed will be meaningless."
+    },
+    {
+      "id": "m9.answer-receipt",
+      "name": "M9 — Immutable, hash-chained answer receipts",
+      "status": "ABSENT",
+      "mechanism": "M9",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No AnswerReceipt model. No versioning of ranker, scorer, prompt, model, or verifier — none of those version identifiers exist to be recorded."
+    },
+    {
+      "id": "m9.replay",
+      "name": "M9 — POST /api/answers/{id}/replay",
+      "status": "ABSENT",
+      "mechanism": "M9",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No replay endpoint and no pinned retrieval sets to replay against."
+    },
+    {
+      "id": "m9.signed-receipt-export",
+      "name": "M9 — Signed PDF receipt export",
+      "status": "ABSENT",
+      "mechanism": "M9",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No PDF generation dependency in package.json."
+    },
+
+    {
+      "id": "auth.login",
+      "name": "Email/password login",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/auth/login/route.ts", "src/lib/auth/session.ts", "src/app/(auth)/login/page.tsx"],
+        "tests": []
+      },
+      "notes": "bcrypt comparison is correct and the generic 'Invalid email or password' response avoids user enumeration. Untested. Downgraded from any higher status by auth.session-integrity."
+    },
+    {
+      "id": "auth.session-integrity",
+      "name": "Session token verification",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/auth/session.ts", "src/app/api/auth/login/route.ts"], "tests": [] },
+      "notes": "CRITICAL. The session cookie is the user's primary key in plaintext (login/route.ts:53 sets it to user.id; session.ts:33 reads it back as the id with no verification). No signature, no MAC, no JWT, no expiry claim, no server-side session record. JWT_SECRET is declared in .env.example and used nowhere. Anyone who obtains a user ID — which is returned in the login response body and exposed via contributorId/authorId/reviewerId fields throughout the API — can authenticate as that user by setting one cookie. getSession() presents as verification while performing none."
+    },
+    {
+      "id": "auth.rbac",
+      "name": "Role-based access control",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/auth/rbac.ts", "prisma/schema.prisma"], "tests": [] },
+      "notes": "SystemRole enum and permission helpers exist. Enforcement is inconsistent across routes and untested. Separation of duties (an author may not verify their own claim) is not implemented — see gov.separation-of-duties."
+    },
+    {
+      "id": "auth.route-protection",
+      "name": "Middleware route gating",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/middleware.ts"], "tests": [] },
+      "notes": "PROTECTED_ROUTES lists 12 prefixes against roughly 40 dashboard prefixes. Not gated by middleware: /knowledge, /evidence, /failures, /standards, /analytics, /graph, /verification, /decisions, /discovery, /matcher, /translation, /assistant, /versions, /tasks, /admin, /integrations, /collaboration, /bookmarks, /saved-searches, /principles, /activity. /admin being absent is notable. The check is cookie-presence only, which given auth.session-integrity is not an authentication check."
+    },
+    {
+      "id": "tenancy.row-level-security",
+      "name": "Database-layer multi-tenancy",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No RLS policies in prisma/schema.prisma and no policy migration. Phase 13 requires enforcement at the database layer."
+    },
+    {
+      "id": "tenancy.query-scoping",
+      "name": "Application-layer tenant scoping",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api"], "tests": [] },
+      "notes": "29 of 48 DB-querying API routes make no reference to organizationId at all. Of the 19 that do, most use it to write the field on create rather than to filter reads. Cross-tenant read exposure confirmed by inspection in: activity, analytics/executive, assistant/conversations, discovery/search, graph/nodes, problems, translation, matcher/analyze, standards/*, versions/*."
+    },
+
+    {
+      "id": "knowledge.crud",
+      "name": "Knowledge entry create / read / update",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/knowledge/route.ts", "src/app/(dashboard)/knowledge/[id]/page.tsx", "src/app/(dashboard)/knowledge/new/page.tsx"],
+        "tests": []
+      },
+      "notes": "Genuine persistence with Zod validation. Untested."
+    },
+    {
+      "id": "knowledge.versioning",
+      "name": "Knowledge versioning and diff",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/lib/versioning/diff-engine.ts", "src/app/api/versions/diff/route.ts", "src/app/api/versions/requests/route.ts"],
+        "tests": []
+      },
+      "notes": "KnowledgeVersion, KnowledgeChangeRequest, KnowledgeRelease models are real. Diff logic is a genuine field-by-field comparison. Untested."
+    },
+    {
+      "id": "knowledge.comments",
+      "name": "Threaded comments on knowledge",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/components/knowledge/threaded-comments.tsx"], "tests": [] },
+      "notes": "Real component backed by the KnowledgeComment model. Untested."
+    },
+    {
+      "id": "evidence.crud",
+      "name": "Evidence record management",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/evidence/route.ts", "src/app/(dashboard)/evidence/page.tsx", "src/app/(dashboard)/evidence/new/page.tsx"],
+        "tests": []
+      },
+      "notes": "Evidence and EvidenceRecord models with real CRUD. Lacks every field the Phase 3 Evidence primitive requires beyond type."
+    },
+    {
+      "id": "evidence.traceability-view",
+      "name": "Evidence traceability page",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/evidence/traceability/page.tsx"], "tests": [] },
+      "notes": "Page exists and queries the database. Does not render an evidence path down to primary test data — see graph.evidence-path-viz."
+    },
+    {
+      "id": "standards.crud",
+      "name": "Standards registry",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/standards/route.ts", "src/app/api/standards/[id]/route.ts", "src/app/(dashboard)/standards/page.tsx"],
+        "tests": []
+      },
+      "notes": "StandardRecord, StandardRevision, StandardHierarchyNode are real models with real CRUD. Untested."
+    },
+    {
+      "id": "standards.impact-analysis",
+      "name": "Standard revision impact analysis",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/standards/impact-engine.ts", "src/app/api/standards/impact/route.ts"], "tests": [] },
+      "notes": "Traverses real ComplianceMapping rows. Untested. Does not transition dependents to REVERIFICATION_REQUIRED."
+    },
+    {
+      "id": "standards.compliance-matrix",
+      "name": "Compliance readiness matrix",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/standards/compliance-engine.ts", "src/app/api/standards/matrix/route.ts"], "tests": [] },
+      "notes": "Arithmetic over real ComplianceMapping rows is correct. FAILS OPEN: compliance-engine.ts:22-31 returns readinessPercentage 100 and rating EXCELLENT for zero mappings. On the current empty database this reports full compliance."
+    },
+    {
+      "id": "standards.drift-watcher",
+      "name": "Phase 9 — Standards revision watcher and reverification",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No watcher job, no scheduler, no background worker anywhere in the repository. No REVERIFICATION_REQUIRED state, no decay half-lives, no reverification workflow."
+    },
+
+    {
+      "id": "search.lexical",
+      "name": "Lexical search",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/discovery/search/route.ts", "src/app/api/search/autocomplete/route.ts", "src/app/(dashboard)/discovery/page.tsx"],
+        "tests": []
+      },
+      "notes": "Real queries, but matching is `contains: <entire query string>` rather than tokenised search. Will not match natural-language questions. No full-text index."
+    },
+    {
+      "id": "search.ranking",
+      "name": "Deterministic relevance ranking",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/search/ranking-engine.ts"], "tests": [] },
+      "notes": "Genuinely deterministic and returns a breakdown — the right shape. Relevance component is substring-only. Envelope status, evidence grade, conflict flags, and reverification status are not ranking factors because none of them exist."
+    },
+    {
+      "id": "search.vector",
+      "name": "Vector similarity search",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No embedding model, no vector column, no pgvector extension, no vector store dependency."
+    },
+    {
+      "id": "search.saved-searches",
+      "name": "Saved searches and search history",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/saved-searches/page.tsx", "src/app/(dashboard)/search/analytics/page.tsx"], "tests": [] },
+      "notes": "SavedSearch and SearchHistoryItem models are real. Untested."
+    },
+
+    {
+      "id": "graph.nodes-edges",
+      "name": "Typed relationship graph",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/graph/nodes/route.ts", "prisma/schema.prisma"], "tests": [] },
+      "notes": "GraphNode, GraphEdge, and a RelationshipType enum are real. Nothing populates them from knowledge operations, so the graph is empty in practice."
+    },
+    {
+      "id": "graph.traversal",
+      "name": "Graph traversal and pathfinding",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/graph/traversal-engine.ts", "src/app/(dashboard)/graph/pathfinder/page.tsx"], "tests": [] },
+      "notes": "Real BFS-style traversal over GraphEdge. Untested and operating on an unpopulated graph."
+    },
+    {
+      "id": "graph.evidence-path-viz",
+      "name": "Phase 12 — Evidence path visualization to primary data",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": ["src/components/graph/graph-network-visualizer.tsx"], "tests": [] },
+      "notes": "A generic network visualizer component exists, but there is no evidence-chain query and no path from a recommendation down to primary test data to render. The directive calls this the single most persuasive demo artifact."
+    },
+
+    {
+      "id": "ing.document-upload",
+      "name": "Document intake and metadata persistence",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/ingestion/documents/route.ts", "src/app/(dashboard)/ingestion/wizard/page.tsx", "src/lib/storage.ts"],
+        "tests": []
+      },
+      "notes": "IngestedDocument rows are genuinely created. storageUrl falls back to a hardcoded literal ('.../sample.pdf') when not supplied, so records can point at a file that was never uploaded."
+    },
+    {
+      "id": "ing.entity-extraction",
+      "name": "Document entity extraction",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/ingestion/extractor-engine.ts", "src/app/api/ingestion/documents/route.ts"], "tests": [] },
+      "notes": "HIGHEST-SEVERITY FINDING. extractEntitiesFromDocument(documentText) never reads its parameter. It returns six hardcoded fabricated engineering claims (Helmholtz resonator arrays, Inconel 718, an 1800 K wall temperature limit), each with an invented page number, section name, and confidence between 89 and 96. documents/route.ts:48 persists all six to ExtractedEntity. rawText is optional and defaults to ''. Uploading any document — blank, unrelated, or an image — writes six plausible aerospace claims into the database attributed to it, with page citations that do not exist. Must be deleted or hard-disabled before any other work."
+    },
+    {
+      "id": "ing.pipeline-orchestration",
+      "name": "Ingestion pipeline stage orchestration",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/ingestion/pipeline-engine.ts", "src/app/api/ingestion/pipeline/route.ts"], "tests": [] },
+      "notes": "executeIngestionPipeline ignores its input and returns six fixed stages all marked SUCCESS with invented durations, extractedEntitiesCount 14, and overallConfidence 94. The IngestionJob row it writes records fabricated counts. No stage actually executes."
+    },
+    {
+      "id": "ing.content-hashing",
+      "name": "Content hashing and span-level deduplication",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/ingestion/documents/route.ts", "src/app/api/ingestion/pipeline/route.ts"], "tests": [] },
+      "notes": "documents/route.ts:39 writes checksum: `sha256-${Math.random().toString(36).substring(2,10)}` — a random string labelled as a SHA-256 hash. pipeline/route.ts:48 writes a fixed literal checksum. Ingesting the same report twice produces different checksums, so it counts as two independent sources. This pre-poisons both Phase 11 deduplication and Phase 3 independence grouping."
+    },
+    {
+      "id": "ing.reconciliation",
+      "name": "Rule 1.3 — rows in / parsed / rejected / persisted reconciliation",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No stage counts, no rejection reasons, no reconciliation assertion. IngestionJob.recordsProcessed is populated from a hardcoded constant."
+    },
+    {
+      "id": "ing.ocr-and-layout",
+      "name": "OCR, layout analysis, table extraction",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No OCR library, no PDF parser, no table extractor in package.json. Nothing can read a scanned document."
+    },
+    {
+      "id": "ing.review-queue",
+      "name": "Human review queue UI",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/ingestion/queue/page.tsx", "src/app/api/ingestion/queue/route.ts"], "tests": [] },
+      "notes": "A queue page and route exist and query real rows. Does not show the proposed claim beside the source page with the span highlighted — spans do not exist — so the one-keystroke accept/edit/reject workflow that determines throughput is not achievable in the current design."
+    },
+
+    {
+      "id": "assistant.chat",
+      "name": "Engineering assistant chat",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": {
+        "files": ["src/app/api/assistant/chat/route.ts", "src/app/(dashboard)/assistant/page.tsx"],
+        "tests": []
+      },
+      "notes": "Wired to retrieval-pipeline.ts. No LLM provider is installed anywhere in the repository; answers are string concatenation. See m8.answer-composition."
+    },
+    {
+      "id": "assistant.conversations",
+      "name": "Conversation history",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/assistant/conversations/route.ts", "src/app/(dashboard)/assistant/history/page.tsx"], "tests": [] },
+      "notes": "EngineeringConversation and EngineeringMessage models are real. Not tenant-scoped."
+    },
+    {
+      "id": "match.problem-similarity",
+      "name": "Problem-to-solution matcher",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/matcher/similarity-engine.ts", "src/app/api/matcher/analyze/route.ts"], "tests": [] },
+      "notes": "Six sub-scores each have a nonzero floor (60/55/50/60/60/70). A candidate matching nothing scores 57/100, so every record is at least a 57% match to every query, presented with the fallback rationale 'Matched on cross-domain physical boundary parameters'. environmentalScore fires on a substring test for the literal 'Kelvin' and then emits a fixed '>1200 K aligned' explanation regardless of the actual value."
+    },
+    {
+      "id": "translation.workspace",
+      "name": "Translation workspace UI",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/translation/workspace/page.tsx", "src/app/api/translation/route.ts"], "tests": [] },
+      "notes": "Page and route are real and persist KnowledgeTranslation rows. The analysis they display comes from m7.transfer-analysis, which is a shell."
+    },
+
+    {
+      "id": "gov.quality-scoring",
+      "name": "Knowledge quality scoring",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/governance/quality-engine.ts", "src/app/api/governance/quality/route.ts"], "tests": [] },
+      "notes": "completenessScore is four string-length checks (title > 5 chars, summaries > 20, explanation > 30) weighted at 35%. evidenceScore is 95 or 40 on a boolean. Presents character count as engineering quality."
+    },
+    {
+      "id": "gov.integrity-report",
+      "name": "Repository integrity reporting",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/governance/integrity/route.ts", "src/app/(dashboard)/governance/integrity/page.tsx"], "tests": [] },
+      "notes": "IntegrityReport model and real aggregate queries. Untested."
+    },
+    {
+      "id": "gov.policies",
+      "name": "Governance policies",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/governance/policies/route.ts"], "tests": [] },
+      "notes": "GovernancePolicy CRUD. Policies are recorded but not enforced anywhere."
+    },
+    {
+      "id": "gov.separation-of-duties",
+      "name": "Phase 13 — Author may not verify own claim",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No check prevents a contributor from verifying their own submission."
+    },
+    {
+      "id": "gov.export-control",
+      "name": "Phase 13 — Classification and ITAR/EAR enforcement",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "KnowledgeVisibility enum exists but carries no export-control markings and is not enforced on retrieval, export, or federation."
+    },
+    {
+      "id": "gov.audit-log",
+      "name": "Security audit logging",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/admin/audit/page.tsx", "prisma/schema.prisma"], "tests": [] },
+      "notes": "SecurityAuditLog and ActivityLog models are real and written on some paths. Not written on reads of classified objects, score changes, or overrides — none of which exist yet."
+    },
+    {
+      "id": "gov.retention-legal-hold",
+      "name": "Phase 13 — Retention policies and legal hold",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Soft-delete columns exist; no retention or hold concept."
+    },
+    {
+      "id": "gov.sso-scim",
+      "name": "Phase 13 — SSO and SCIM provisioning",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Local password auth only."
+    },
+
+    {
+      "id": "ops.health",
+      "name": "System health scoring",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/operations/observability-engine.ts", "src/app/api/operations/health/route.ts"], "tests": [] },
+      "notes": "FAILS OPEN: zero services returns overallHealthScore 100, status HEALTHY, uptimePercentage 99.99. uptimePercentage is also hardcoded to 99.98 on the non-empty path, and activeIncidents is derived as hasCritical ? 2 : hasDegraded ? 1 : 0 — a fabricated count, not a query. On the current empty database this reports a perfectly healthy system with 99.99% uptime."
+    },
+    {
+      "id": "ops.incidents",
+      "name": "Incident tracking",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/operations/incidents/route.ts", "src/app/(dashboard)/operations/incidents/page.tsx"], "tests": [] },
+      "notes": "SystemIncident CRUD is real. Untested."
+    },
+    {
+      "id": "ops.backups",
+      "name": "Backup records",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/operations/backups/route.ts"], "tests": [] },
+      "notes": "SystemBackupRecord rows are created, but no backup is actually performed — the record is metadata only."
+    },
+    {
+      "id": "ops.feature-flags",
+      "name": "Feature flags",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/operations/flags/route.ts"], "tests": [] },
+      "notes": "FeatureFlag CRUD is real. No flag is read by any code path, so flags have no effect."
+    },
+    {
+      "id": "devops.deployments",
+      "name": "Deployment records and environments",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/devops/deployments/route.ts", "src/app/api/devops/environments/route.ts"], "tests": [] },
+      "notes": "SystemDeploymentRecord and DeploymentEnvironmentConfig CRUD. Records deployments; does not perform them."
+    },
+    {
+      "id": "devops.k8s-manifest",
+      "name": "Kubernetes manifest generation",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/devops/deployment-engine.ts"], "tests": [] },
+      "notes": "A genuine template function that does interpolate its inputs (environment, replicas). Image tag is pinned to a literal v1.0.0. Untested."
+    },
+
+    {
+      "id": "dev.graphql-api",
+      "name": "GraphQL API",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/graphql/route.ts"], "tests": [] },
+      "notes": "Not a GraphQL server. No schema, no parser, no resolver, no graphql dependency. Introspection returns four hardcoded type stubs. Every non-introspection query — regardless of what it asks for — returns the same ten knowledge entries. Presenting this as a GraphQL endpoint is a capability overclaim."
+    },
+    {
+      "id": "dev.openapi-spec",
+      "name": "OpenAPI specification",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/lib/developer/openapi-spec.ts", "src/app/api/v1/openapi.json/route.ts"], "tests": [] },
+      "notes": "A hand-maintained static spec served from a route. It is not generated from the 62 actual routes and will drift silently."
+    },
+    {
+      "id": "dev.api-keys",
+      "name": "API key management",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/admin/apikeys/route.ts", "src/app/(dashboard)/admin/apikeys/page.tsx"], "tests": [] },
+      "notes": "ApiKey model and CRUD are real. No route authenticates using an API key, so issued keys grant nothing."
+    },
+    {
+      "id": "dev.automation-rules",
+      "name": "Automation rules",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/developer/automation/route.ts"], "tests": [] },
+      "notes": "AutomationRule and AutomationRunLog models with CRUD. No executor runs the rules."
+    },
+    {
+      "id": "dev.portal-page",
+      "name": "Developer portal page",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/developer/page.tsx"], "tests": [] },
+      "notes": "Renders no data — no Prisma query and no fetch. Static marketing content for the API surface."
+    },
+
+    {
+      "id": "integrations.connectors",
+      "name": "Integration connectors",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/integrations/connectors/route.ts", "src/app/(dashboard)/integrations/page.tsx"], "tests": [] },
+      "notes": "IntegrationConnector and IntegrationFieldMapping CRUD is real. No connector performs a real external call."
+    },
+    {
+      "id": "integrations.sync",
+      "name": "Sync jobs and lineage",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/integrations/sync/route.ts"], "tests": [] },
+      "notes": "SyncJob and SyncLineage rows are written synchronously inside the request handler. No worker executes them."
+    },
+    {
+      "id": "integrations.webhooks",
+      "name": "Outbound webhooks",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/integrations/webhooks/page.tsx"], "tests": [] },
+      "notes": "IntegrationWebhook registration is real. Nothing dispatches a webhook."
+    },
+
+    {
+      "id": "analytics.executive",
+      "name": "Executive analytics",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/analytics/executive/route.ts", "src/app/(dashboard)/analytics/page.tsx"], "tests": [] },
+      "notes": "Real aggregate queries over real tables. Not tenant-scoped. Will render zeros on the empty database."
+    },
+    {
+      "id": "analytics.reports",
+      "name": "Saved reports page",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/analytics/reports/page.tsx"], "tests": [] },
+      "notes": "Renders no data — no Prisma query and no fetch, despite a SavedReport model existing."
+    },
+    {
+      "id": "analytics.conflict-density",
+      "name": "Phase 6 — Conflict density as a repository health metric",
+      "status": "ABSENT",
+      "mechanism": "M6",
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Depends on m6.conflict-object."
+    },
+    {
+      "id": "analytics.decay-exposure",
+      "name": "Phase 9 — Reverification coverage and decay exposure",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "Depends on standards.drift-watcher."
+    },
+
+    {
+      "id": "projects.crud",
+      "name": "Engineering projects, programs, portfolios",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/projects/route.ts", "src/app/api/projects/[id]/route.ts", "src/app/(dashboard)/projects/page.tsx"], "tests": [] },
+      "notes": "EngineeringProject/Program/Portfolio/Milestone models with real CRUD. This is the natural home for the M4 OperatingPoint inheritance."
+    },
+    {
+      "id": "tasks.crud",
+      "name": "Task board",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/tasks/route.ts", "src/app/(dashboard)/tasks/page.tsx"], "tests": [] },
+      "notes": "EngineeringTask with status columns. Untested."
+    },
+    {
+      "id": "decisions.crud",
+      "name": "Engineering decision records",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/decisions/route.ts", "src/app/api/decisions/[id]/route.ts"], "tests": [] },
+      "notes": "EngineeringDecision CRUD. Not tenant-scoped on the [id] route."
+    },
+    {
+      "id": "collab.bookmarks",
+      "name": "Bookmarks, folders, watches, notifications",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/bookmarks/page.tsx", "src/app/(dashboard)/collaboration/page.tsx"], "tests": [] },
+      "notes": "Bookmark, BookmarkFolder, ItemWatch, Notification, KnowledgeSubscription models are real. No notification is ever dispatched."
+    },
+    {
+      "id": "marketplace.listings",
+      "name": "Marketplace and partners",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/api/marketplace/route.ts", "src/app/api/marketplace/partners/route.ts"], "tests": [] },
+      "notes": "MarketplaceListing, OrgPartnership, EngineeringConsortium CRUD. Untested."
+    },
+    {
+      "id": "user.profile-page",
+      "name": "User profile page",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/profile/page.tsx"], "tests": [] },
+      "notes": "Renders no data — no Prisma query and no fetch. Displays static fields rather than the signed-in user."
+    },
+    {
+      "id": "user.settings-page",
+      "name": "Settings page",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["src/app/(dashboard)/settings/page.tsx"], "tests": [] },
+      "notes": "Renders no data and persists nothing. Controls are non-functional."
+    },
+
+    {
+      "id": "federation.cross-org-query",
+      "name": "Phase 14 — Federated query across organizations",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "OrgPartnership and EngineeringConsortium models exist as a foundation, but no federated query, no controlled disclosure workflow."
+    },
+    {
+      "id": "federation.redaction",
+      "name": "Phase 14 — Server-side redaction policies",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No redaction policy model or enforcement."
+    },
+
+    {
+      "id": "bench.ktn-bench",
+      "name": "Phase 15 — KTN-Bench evaluation harness",
+      "status": "ABSENT",
+      "mechanism": null,
+      "evidence": { "files": [], "tests": [] },
+      "notes": "No bench directory, no curated question set, no metrics, no CI gate. Until this exists no quality claim about the system is measurable."
+    },
+    {
+      "id": "corpus.seed-data",
+      "name": "Seed corpus",
+      "status": "SHELL",
+      "mechanism": null,
+      "evidence": { "files": ["prisma/seed.ts"], "tests": [] },
+      "notes": "53 lines creating one EngineeringDomain and two deployment records. Zero knowledge entries, zero evidence, zero standards, zero documents. Every engine in the system currently operates on an empty database, which is why the fail-open defaults in ops.health and standards.compliance-matrix produce perfect scores. Seed data is not labelled synthetic because there is effectively none."
+    },
+    {
+      "id": "test.infrastructure",
+      "name": "Test runner and harness",
+      "status": "PARTIAL",
+      "mechanism": null,
+      "evidence": { "files": ["vitest.config.ts", "package.json"], "tests": ["tests/ledger.spec.ts", "tests/capabilities-api.spec.ts"] },
+      "notes": "Added during Phase 0 solely to make the ledger enforceable. Before this audit the repository had no test script, no test runner, no test dependency, and zero test files. Marked PARTIAL rather than REAL because there is no integration test against a real database yet — Rule 2 requires that for any subsystem to count as complete."
+    }
+  ]
+}
