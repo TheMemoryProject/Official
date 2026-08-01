@@ -1,0 +1,1810 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SystemRole {
+  ADMIN
+  VERIFIER
+  CONTRIBUTOR
+  ENGINEER
+  VIEWER
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_CHANGES
+  REJECTED
+  VERIFIED
+  ARCHIVED
+}
+
+enum ProblemSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  BLOCKER
+}
+
+enum KnowledgeVisibility {
+  PUBLIC
+  ORGANIZATION
+  PRIVATE
+}
+
+enum RelationshipType {
+  SOLVES
+  SIMILAR_TO
+  RELATED_TO
+  USES
+  REQUIRES
+  GENERATED_BY
+  SUPPORTED_BY
+  CONTRADICTED_BY
+  SUPERSEDES
+  PREVENTS
+  CAUSES
+  FAILED_BECAUSE_OF
+  TESTED_BY
+  VERIFIED_BY
+  REFERENCES
+  DERIVED_FROM
+  MANUFACTURED_WITH
+  APPLIES_TO
+  CERTIFIED_BY
+  MITIGATED_BY
+  GOVERNED_BY
+  COMPLIES_WITH
+  VIOLATES
+}
+
+enum GraphNodeType {
+  KNOWLEDGE_ENTRY
+  ENGINEERING_PROBLEM
+  SOLUTION
+  FAILURE
+  EVIDENCE
+  DOMAIN
+  INDUSTRY
+  TECHNOLOGY
+  MATERIAL
+  MANUFACTURING_PROCESS
+  COMPONENT
+  SUBSYSTEM
+  SYSTEM
+  PHYSICAL_PHENOMENON
+  FAILURE_MODE
+  CONSTRAINT
+  ENGINEERING_STANDARD
+  PATENT
+  RESEARCH_PAPER
+  ORGANIZATION
+  CONTRIBUTOR
+}
+
+enum EvidenceType {
+  TEST_REPORT
+  QUALIFICATION_REPORT
+  CERTIFICATION_RECORD
+  LAB_RESULT
+  PEER_REVIEWED_PAPER
+  SIMULATION_FEA_CFD
+  INSPECTION_REPORT
+  MATERIAL_DATASHEET
+  ENGINEERING_STANDARD
+  PATENT
+  PROTOTYPE_RESULT
+  PRODUCTION_DATA
+}
+
+enum TranslationCategory {
+  FUNCTION_TRANSFER
+  FAILURE_TRANSFER
+  MATERIAL_TRANSFER
+  MANUFACTURING_TRANSFER
+  THERMAL_TRANSFER
+  STRUCTURAL_TRANSFER
+  RELIABILITY_TRANSFER
+  LESSONS_LEARNED
+}
+
+enum DocumentProcessingStatus {
+  UPLOADED
+  PROCESSING
+  EXTRACTED
+  NEEDS_REVIEW
+  APPROVED
+  FAILED
+}
+
+enum ExtractedEntityType {
+  PROBLEM
+  SOLUTION
+  FAILURE_MODE
+  MATERIAL
+  MANUFACTURING_PROCESS
+  PHYSICAL_PHENOMENON
+  CONSTRAINT
+  LESSONS_LEARNED
+  STANDARD
+  CORRECTIVE_ACTION
+}
+
+enum StandardStatus {
+  ACTIVE
+  SUPERSEDED
+  DRAFT
+  UNDER_REVISION
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum StandardHierarchyType {
+  CHAPTER
+  SECTION
+  SUBSECTION
+  REQUIREMENT
+  CLAUSE
+  PARAGRAPH
+  FIGURE
+  TABLE
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  PARTIALLY_COMPLIANT
+  UNDER_REVIEW
+  MISSING_EVIDENCE
+  NOT_APPLICABLE
+}
+
+enum DecisionStatus {
+  DRAFT
+  DISCUSSION
+  TECHNICAL_REVIEW
+  APPROVAL
+  PUBLISHED
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  TECHNICAL_REVIEW
+  DONE
+  BLOCKED
+}
+
+enum ConnectorType {
+  PLM_WINDCHILL
+  PLM_TEAMCENTER
+  ERP_SAP
+  QMS_TRACKWISE
+  GIT_GITHUB
+  REST_API
+  WEBHOOK
+  CSV_EXCEL
+  DATABASE_SQL
+}
+
+enum ConnectorStatus {
+  ACTIVE
+  INACTIVE
+  PAUSED
+  ERROR
+}
+
+enum ConnectorHealth {
+  HEALTHY
+  WARNING
+  UNHEALTHY
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id               String               @id @default(uuid()) @db.Uuid
+  email            String               @unique
+  passwordHash     String
+  fullName         String
+  title            String?
+  avatarUrl        String?
+  role             SystemRole           @default(ENGINEER)
+  organizationId   String?              @db.Uuid
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  deletedAt        DateTime?
+
+  organization     Organization?        @relation("PrimaryOrganization", fields: [organizationId], references: [id])
+  memberships      OrganizationMember[]
+  createdProblems  EngineeringProblem[] @relation("ProblemCreator")
+  createdSolutions VerifiedSolution[]   @relation("SolutionCreator")
+  verifiedSolutions VerifiedSolution[]  @relation("SolutionVerifier")
+  evidences        Evidence[]           @relation("EvidenceUploader")
+
+  createdKnowledge KnowledgeEntry[]     @relation("KnowledgeContributor")
+  reviewedKnowledge KnowledgeEntry[]    @relation("KnowledgeReviewer")
+  bookmarks        Bookmark[]
+  bookmarkFolders  BookmarkFolder[]
+  savedSearches    SavedSearch[]
+  searchHistory    SearchHistoryItem[]
+  recentlyViewed   RecentlyViewedItem[]
+  notifications    Notification[]
+  createdFailures  FailureRecord[]      @relation("FailureContributor")
+  reviewedFailures FailureRecord[]      @relation("FailureVerifier")
+  createdEvidenceRecords EvidenceRecord[] @relation("EvidenceRecordContributor")
+  reviewedEvidenceRecords EvidenceRecord[] @relation("EvidenceRecordVerifier")
+  ingestedDocs     IngestedDocument[]   @relation("DocContributor")
+
+  createdStandards StandardRecord[]     @relation("StandardContributor")
+  reviewedStandards StandardRecord[]    @relation("StandardReviewer")
+  reviewedComplianceMappings ComplianceMapping[] @relation("ComplianceReviewer")
+
+  createdDecisions EngineeringDecision[] @relation("DecisionOwner")
+  createdTasks     EngineeringTask[]     @relation("TaskReporter")
+  assignedTasks    EngineeringTask[]     @relation("TaskAssignee")
+  activityLogs     ActivityLog[]
+  watchedItems     ItemWatch[]
+
+  connectors       IntegrationConnector[] @relation("ConnectorOwner")
+  savedReports     SavedReport[]          @relation("ReportAuthor")
+  apiKeys          ApiKey[]               @relation("ApiKeyOwner")
+  conversations    EngineeringConversation[] @relation("ConversationUser")
+
+  changeRequests   KnowledgeChangeRequest[] @relation("RequestRequester")
+  reviewedRequests KnowledgeChangeRequest[] @relation("RequestReviewer")
+  publishedReleases KnowledgeRelease[]      @relation("ReleasePublisher")
+  subscriptions    KnowledgeSubscription[]
+
+  portfolios       EngineeringPortfolio[] @relation("PortfolioOwner")
+  programs         EngineeringProgram[]   @relation("ProgramOwner")
+  projects         EngineeringProject[]   @relation("ProjectOwner")
+  developerApps    DeveloperApp[]         @relation("AppOwner")
+  incidents        SystemIncident[]       @relation("IncidentOwner")
+
+  @@index([email])
+  @@index([role])
+  @@index([organizationId])
+}
+
+model Organization {
+  id                String               @id @default(uuid()) @db.Uuid
+  name              String
+  slug              String               @unique
+  description       String?
+  logoUrl           String?
+  subscriptionTier  String               @default("ENTERPRISE") // COMMUNITY, PROFESSIONAL, ENTERPRISE
+  region            String               @default("US-EAST")
+  storageUsageMb    Float                @default(128.5)
+  retentionDays     Int                  @default(365)
+  securitySettingsJson String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  deletedAt         DateTime?
+
+  primaryUsers      User[]              @relation("PrimaryOrganization")
+  members           OrganizationMember[]
+  problems          EngineeringProblem[]
+  solutions         VerifiedSolution[]
+  knowledge         KnowledgeEntry[]
+  failures          FailureRecord[]
+  evidenceRecords   EvidenceRecord[]
+  ingestedDocs      IngestedDocument[]
+  standards         StandardRecord[]
+  decisions         EngineeringDecision[]
+  tasks             EngineeringTask[]
+  connectors        IntegrationConnector[]
+  apiKeys           ApiKey[]
+  auditLogs         SecurityAuditLog[]
+  portfolios        EngineeringPortfolio[]
+  projects          EngineeringProject[]
+  automationRules   AutomationRule[]
+  developerApps     DeveloperApp[]
+  governancePolicies GovernancePolicy[]
+  integrityReports  IntegrityReport[]
+  marketplaceListings MarketplaceListing[]
+  partnerRequests   OrgPartnership[]      @relation("RequesterOrg")
+  partnerAccepts    OrgPartnership[]      @relation("PartnerOrg")
+  leadConsortiums   EngineeringConsortium[] @relation("LeadOrg")
+
+  @@index([slug])
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  role           SystemRole   @default(ENGINEER)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model EngineeringDomain {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique
+  code        String               @unique
+  description String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  problems    EngineeringProblem[]
+  solutions   VerifiedSolution[]
+  knowledge   KnowledgeEntry[]
+  failures    FailureRecord[]
+  evidenceRecords EvidenceRecord[]
+  standards   StandardRecord[]
+  decisions   EngineeringDecision[]
+  projects    EngineeringProject[]
+}
+
+model Industry {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique
+  code        String               @unique
+  description String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  problems    EngineeringProblem[]
+  solutions   VerifiedSolution[]
+  knowledge   KnowledgeEntry[]
+  failures    FailureRecord[]
+  evidenceRecords EvidenceRecord[]
+  standards   StandardRecord[]
+  decisions   EngineeringDecision[]
+  projects    EngineeringProject[]
+}
+
+model EngineeringProblem {
+  id             String             @id @default(uuid()) @db.Uuid
+  title          String
+  description    String
+  severity       ProblemSeverity    @default(MEDIUM)
+  domainId       String             @db.Uuid
+  industryId     String             @db.Uuid
+  organizationId String?            @db.Uuid
+  creatorId      String             @db.Uuid
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+
+  domain         EngineeringDomain  @relation(fields: [domainId], references: [id])
+  industry       Industry           @relation(fields: [industryId], references: [id])
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+  creator        User               @relation("ProblemCreator", fields: [creatorId], references: [id])
+  solutions      VerifiedSolution[]
+
+  @@index([domainId])
+  @@index([industryId])
+  @@index([creatorId])
+  @@index([organizationId])
+}
+
+model VerifiedSolution {
+  id                  String             @id @default(uuid()) @db.Uuid
+  problemId           String             @db.Uuid
+  title               String
+  summary             String
+  solutionDetails     String
+  verificationStatus  VerificationStatus @default(UNVERIFIED)
+  verificationNotes   String?
+  knownLimitations    String?
+  organizationId      String?            @db.Uuid
+  domainId            String             @db.Uuid
+  industryId          String             @db.Uuid
+  creatorId           String             @db.Uuid
+  verifierId          String?            @db.Uuid
+  verifiedAt          DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+
+  problem             EngineeringProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  domain              EngineeringDomain  @relation(fields: [domainId], references: [id])
+  industry            Industry           @relation(fields: [industryId], references: [id])
+  organization        Organization?      @relation(fields: [organizationId], references: [id])
+  creator             User               @relation("SolutionCreator", fields: [creatorId], references: [id])
+  verifier            User?              @relation("SolutionVerifier", fields: [verifierId], references: [id])
+
+  evidences           Evidence[]
+  failures            FailureRecord[]
+  references          SolutionReference[]
+  tags                SolutionTag[]
+  sourceRelations     RelatedSolution[]   @relation("SourceSolution")
+  targetRelations     RelatedSolution[]   @relation("TargetSolution")
+
+  @@index([problemId])
+  @@index([verificationStatus])
+  @@index([creatorId])
+  @@index([verifierId])
+  @@index([domainId])
+  @@index([industryId])
+}
+
+model Evidence {
+  id          String           @id @default(uuid()) @db.Uuid
+  solutionId  String           @db.Uuid
+  title       String
+  description String
+  fileUrl     String
+  fileType    String
+  uploaderId  String           @db.Uuid
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  solution    VerifiedSolution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  uploader    User             @relation("EvidenceUploader", fields: [uploaderId], references: [id])
+
+  @@index([solutionId])
+}
+
+model Tag {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @unique
+  createdAt DateTime      @default(now())
+
+  solutions SolutionTag[]
+}
+
+model SolutionTag {
+  solutionId String           @db.Uuid
+  tagId      String           @db.Uuid
+
+  solution   VerifiedSolution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  tag        Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([solutionId, tagId])
+}
+
+model SolutionReference {
+  id         String           @id @default(uuid()) @db.Uuid
+  solutionId String           @db.Uuid
+  title      String
+  url        String?
+  citation   String?
+  createdAt  DateTime         @default(now())
+
+  solution   VerifiedSolution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@index([solutionId])
+}
+
+model RelatedSolution {
+  sourceSolutionId String           @db.Uuid
+  targetSolutionId String           @db.Uuid
+  relationshipType String           @default("DEPENDS_ON")
+
+  sourceSolution   VerifiedSolution @relation("SourceSolution", fields: [sourceSolutionId], references: [id], onDelete: Cascade)
+  targetSolution   VerifiedSolution @relation("TargetSolution", fields: [targetSolutionId], references: [id], onDelete: Cascade)
+
+  @@id([sourceSolutionId, targetSolutionId])
+}
+
+model KnowledgeEntry {
+  id                   String              @id @default(uuid()) @db.Uuid
+  title                String
+  problemSummary       String
+  detailedProblem      String
+  solutionSummary      String
+  technicalExplanation String
+  knownConstraints     String?
+  failureModes         String?
+  lessonsLearned       String?
+  benefits             String?
+  tradeoffs            String?
+  implementationSteps  String?
+  verificationStatus   VerificationStatus  @default(DRAFT)
+  confidenceScore      Int                 @default(85)
+  difficultyLevel      Int                 @default(3)
+  viewCount            Int                 @default(0)
+  bookmarkCount        Int                 @default(0)
+  readingTimeMinutes   Int                 @default(5)
+  version              Int                 @default(1)
+  visibility           KnowledgeVisibility @default(PUBLIC)
+  verificationNotes    String?
+  domainId             String              @db.Uuid
+  industryId           String              @db.Uuid
+  organizationId       String?             @db.Uuid
+  creatorId            String              @db.Uuid
+  reviewerId           String?             @db.Uuid
+  projectId            String?             @db.Uuid
+  verifiedAt           DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  deletedAt            DateTime?
+
+  domain               EngineeringDomain   @relation(fields: [domainId], references: [id])
+  industry             Industry            @relation(fields: [industryId], references: [id])
+  organization         Organization?       @relation(fields: [organizationId], references: [id])
+  creator              User                @relation("KnowledgeContributor", fields: [creatorId], references: [id])
+  reviewer             User?               @relation("KnowledgeReviewer", fields: [reviewerId], references: [id])
+  project              EngineeringProject? @relation(fields: [projectId], references: [id])
+
+  versions             KnowledgeVersion[]
+  attachments          KnowledgeAttachment[]
+  comments             KnowledgeComment[]
+  bookmarks            Bookmark[]
+  recentlyViewed       RecentlyViewedItem[]
+  sourceTranslations   KnowledgeTranslation[] @relation("SourceKnowledge")
+  targetTranslations   KnowledgeTranslation[] @relation("TargetKnowledge")
+  complianceMappings   ComplianceMapping[]
+  decisions            EngineeringDecision[]
+  tasks                EngineeringTask[]
+  changeRequests       KnowledgeChangeRequest[]
+  qualityScores        KnowledgeQualityScore[]
+
+  @@index([verificationStatus])
+  @@index([domainId])
+  @@index([industryId])
+  @@index([creatorId])
+  @@index([confidenceScore])
+}
+
+model KnowledgeVersion {
+  id                   String         @id @default(uuid()) @db.Uuid
+  knowledgeEntryId     String         @db.Uuid
+  version              Int
+  title                String
+  problemSummary       String
+  solutionSummary      String
+  technicalExplanation String
+  editorId             String         @db.Uuid
+  changeSummary        String?
+  snapshotJson         String
+  createdAt            DateTime       @default(now())
+
+  knowledgeEntry       KnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeEntryId])
+}
+
+model KnowledgeAttachment {
+  id               String         @id @default(uuid()) @db.Uuid
+  knowledgeEntryId String         @db.Uuid
+  title            String
+  fileUrl          String
+  fileName         String
+  fileType         String
+  fileSize         Int
+  uploaderId       String         @db.Uuid
+  createdAt        DateTime       @default(now())
+
+  knowledgeEntry   KnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeEntryId])
+}
+
+model KnowledgeComment {
+  id               String             @id @default(uuid()) @db.Uuid
+  knowledgeEntryId String             @db.Uuid
+  parentCommentId  String?            @db.Uuid
+  authorId         String             @db.Uuid
+  content          String
+  isResolved       Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  knowledgeEntry   KnowledgeEntry     @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+  parentComment    KnowledgeComment?  @relation("ThreadedComment", fields: [parentCommentId], references: [id])
+  replies          KnowledgeComment[] @relation("ThreadedComment")
+
+  @@index([knowledgeEntryId])
+}
+
+model BookmarkFolder {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  color     String     @default("#3b82f6")
+  userId    String     @db.Uuid
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookmarks Bookmark[]
+
+  @@index([userId])
+}
+
+model Bookmark {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @db.Uuid
+  knowledgeEntryId String          @db.Uuid
+  folderId         String?         @db.Uuid
+  notes            String?
+  createdAt        DateTime        @default(now())
+
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeEntry   KnowledgeEntry  @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+  folder           BookmarkFolder? @relation(fields: [folderId], references: [id])
+
+  @@unique([userId, knowledgeEntryId])
+  @@index([userId])
+}
+
+model SavedSearch {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  name        String
+  query       String
+  filtersJson String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SearchHistoryItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  query       String
+  filtersJson String
+  resultCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RecentlyViewedItem {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String         @db.Uuid
+  knowledgeEntryId String         @db.Uuid
+  viewedAt         DateTime       @default(now())
+
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeEntry   KnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, knowledgeEntryId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  message   String
+  type      String   @default("INFO")
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TaxonomyCategory {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  code        String             @unique
+  type        String             // MATERIAL, PROCESS, FAILURE_MODE, PHENOMENON, TECHNOLOGY, COMPONENT
+  parentId    String?            @db.Uuid
+  description String?
+  createdAt   DateTime           @default(now())
+
+  parent      TaxonomyCategory?  @relation("TaxonomyHierarchy", fields: [parentId], references: [id])
+  children    TaxonomyCategory[] @relation("TaxonomyHierarchy")
+
+  @@index([type])
+}
+
+model StructuredProblem {
+  id                String   @id @default(uuid()) @db.Uuid
+  title             String
+  objective         String
+  system            String
+  subsystem         String
+  component         String
+  primaryFunction   String
+  secondaryFunction String?
+  failureMode       String
+  phenomenon        String
+  rootCause         String
+  operatingTempMin  Float?
+  operatingTempMax  Float?
+  pressureMax       Float?
+  loadType          String?
+  materialFamily    String?
+  process           String?
+  reliabilityReq    String?
+  creatorId         String   @db.Uuid
+  createdAt         DateTime @default(now())
+
+  @@index([creatorId])
+}
+
+model FailureRecord {
+  id                 String             @id @default(uuid()) @db.Uuid
+  title              String
+  summary            String
+  description        String
+  category           String
+  failureType        String
+  subsystem          String
+  component          String
+  affectedProduct    String?
+  phenomenon         String
+  rootCause          String
+  immediateCause     String
+  contributingFactors String?
+  operatingConditions String?
+  material           String?
+  process            String?
+  supplier           String?
+  testingMethod      String?
+  detectionMethod    String?
+  severity           Int                @default(5)
+  occurrence         Int                @default(5)
+  detectability      Int                @default(5)
+  rpn                Int                @default(125)
+  financialCost      Float?
+  scheduleImpactDays Int?
+  safetyImpact       String?
+  correctiveActions  String
+  preventiveActions  String
+  lessonsLearned     String
+  fiveWhysJson       String?
+  fishboneJson       String?
+  verificationStatus VerificationStatus @default(DRAFT)
+  domainId           String             @db.Uuid
+  industryId         String             @db.Uuid
+  organizationId     String?            @db.Uuid
+  contributorId      String             @db.Uuid
+  verifierId         String?            @db.Uuid
+  verifiedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+
+  domain             EngineeringDomain  @relation(fields: [domainId], references: [id])
+  industry           Industry           @relation(fields: [industryId], references: [id])
+  organization       Organization?      @relation(fields: [organizationId], references: [id])
+  contributor        User               @relation("FailureContributor", fields: [contributorId], references: [id])
+  verifier           User?              @relation("FailureVerifier", fields: [verifierId], references: [id])
+
+  verifiedSolution   VerifiedSolution?  @relation(fields: [verifiedSolutionId], references: [id])
+  verifiedSolutionId String?            @db.Uuid
+
+  complianceMappings ComplianceMapping[]
+  decisions          EngineeringDecision[]
+  tasks              EngineeringTask[]
+
+  @@index([rpn])
+  @@index([verificationStatus])
+  @@index([domainId])
+  @@index([industryId])
+}
+
+model EvidenceRecord {
+  id                   String             @id @default(uuid()) @db.Uuid
+  title                String
+  summary              String
+  description          String
+  evidenceType         EvidenceType       @default(TEST_REPORT)
+  source               String
+  documentNumber       String?
+  revision             String?
+  author               String?
+  publicationDate      DateTime?
+  doi                  String?
+  patentNumber         String?
+  standardsRef         String?
+  certificationRef     String?
+  confidenceLevel      String             @default("HIGH")
+  evidenceStrengthScore Int               @default(85)
+  accessLevel          KnowledgeVisibility @default(PUBLIC)
+  fileUrl              String?
+  externalUrl          String?
+  verificationStatus   VerificationStatus @default(DRAFT)
+  domainId             String             @db.Uuid
+  industryId           String             @db.Uuid
+  organizationId       String?            @db.Uuid
+  contributorId        String             @db.Uuid
+  verifierId           String?            @db.Uuid
+  verifiedAt           DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  deletedAt            DateTime?
+
+  domain               EngineeringDomain  @relation(fields: [domainId], references: [id])
+  industry             Industry           @relation(fields: [industryId], references: [id])
+  organization         Organization?      @relation(fields: [organizationId], references: [id])
+  contributor          User               @relation("EvidenceRecordContributor", fields: [contributorId], references: [id])
+  verifier             User?              @relation("EvidenceRecordVerifier", fields: [verifierId], references: [id])
+
+  complianceMappings   ComplianceMapping[]
+  decisions            EngineeringDecision[]
+  tasks                EngineeringTask[]
+
+  @@index([evidenceStrengthScore])
+  @@index([verificationStatus])
+}
+
+model GraphNode {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String
+  nodeType       GraphNodeType
+  entityId       String?
+  domainId       String?       @db.Uuid
+  industryId     String?       @db.Uuid
+  metadataJson   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  outgoingEdges  GraphEdge[]   @relation("SourceNode")
+  incomingEdges  GraphEdge[]   @relation("TargetNode")
+
+  @@index([nodeType])
+  @@index([name])
+}
+
+model GraphEdge {
+  id                 String             @id @default(uuid()) @db.Uuid
+  sourceNodeId       String             @db.Uuid
+  targetNodeId       String             @db.Uuid
+  relationshipType   RelationshipType   @default(RELATED_TO)
+  weight             Float              @default(1.0)
+  confidence         Int                @default(90)
+  verificationStatus VerificationStatus @default(VERIFIED)
+  createdAt          DateTime           @default(now())
+
+  sourceNode         GraphNode          @relation("SourceNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode         GraphNode          @relation("TargetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@index([relationshipType])
+}
+
+model EngineeringPrinciple {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  code        String   @unique
+  category    String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model KnowledgeTranslation {
+  id                     String              @id @default(uuid()) @db.Uuid
+  sourceKnowledgeId      String              @db.Uuid
+  targetKnowledgeId      String              @db.Uuid
+  sourceIndustryId       String              @db.Uuid
+  targetIndustryId       String              @db.Uuid
+  translationType        TranslationCategory @default(FUNCTION_TRANSFER)
+  translationConfidence  Int                 @default(88)
+  verificationStatus     VerificationStatus  @default(VERIFIED)
+  explanation            String
+  functionalSimilarities String
+  constraintSimilarities String
+  differingConstraints   String
+  verifiedAt             DateTime?
+  createdAt              DateTime            @default(now())
+
+  sourceKnowledge        KnowledgeEntry      @relation("SourceKnowledge", fields: [sourceKnowledgeId], references: [id], onDelete: Cascade)
+  targetKnowledge        KnowledgeEntry      @relation("TargetKnowledge", fields: [targetKnowledgeId], references: [id], onDelete: Cascade)
+
+  @@index([translationConfidence])
+}
+
+model IngestedDocument {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  title                String
+  originalFilename     String
+  documentType         String                   @default("TEST_REPORT")
+  mimeType             String
+  fileSize             Int
+  checksum             String
+  storageUrl           String
+  processingStatus     DocumentProcessingStatus @default(UPLOADED)
+  extractionConfidence Int                      @default(90)
+  documentNumber       String?
+  author               String?
+  contributorId        String                   @db.Uuid
+  organizationId       String?                  @db.Uuid
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  contributor          User                     @relation("DocContributor", fields: [contributorId], references: [id])
+  organization         Organization?            @relation(fields: [organizationId], references: [id])
+  extractedEntities    ExtractedEntity[]
+  ingestionJobs        IngestionJob[]
+  documentPages        DocumentPage[]
+
+  @@index([processingStatus])
+}
+
+model ExtractedEntity {
+  id                 String              @id @default(uuid()) @db.Uuid
+  documentId         String              @db.Uuid
+  entityType         ExtractedEntityType
+  extractedText      String
+  pageNumber         Int                 @default(1)
+  sectionName        String?
+  confidence         Int                 @default(90)
+  reviewStatus       String              @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt          DateTime            @default(now())
+
+  document           IngestedDocument    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([entityType])
+}
+
+model StandardRecord {
+  id                     String             @id @default(uuid()) @db.Uuid
+  title                  String
+  standardNumber         String             @unique // e.g. "ISO 9001", "ASME BPVC VIII", "RTCA DO-178C"
+  standardFamily         String             // ISO, IEC, IEEE, ASTM, ASME, SAE, MIL-STD, NASA, FAA, EASA, RTCA, IPC, ANSI, DIN, BS, EN, JIS
+  revision               String             // e.g. "2015", "Rev C", "2021 Edition"
+  publicationDate        DateTime?
+  effectiveDate          DateTime?
+  supersededDate         DateTime?
+  status                 StandardStatus     @default(ACTIVE)
+  jurisdiction           String?            @default("INTERNATIONAL") // INTERNATIONAL, US, EU, NATIONAL, COMPANY
+  description            String
+  scope                  String?
+  keywords               String?
+  externalSourceUrl      String?
+  officialPublisher      String             // ISO, ASME, IEEE, RTCA, SAE, etc.
+  version                Int                @default(1)
+  verificationStatus     VerificationStatus @default(VERIFIED)
+  domainId               String             @db.Uuid
+  industryId             String             @db.Uuid
+  organizationId         String?            @db.Uuid
+  contributorId          String             @db.Uuid
+  reviewerId             String?            @db.Uuid
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  archivedAt             DateTime?
+
+  domain                 EngineeringDomain  @relation(fields: [domainId], references: [id])
+  industry               Industry           @relation(fields: [industryId], references: [id])
+  organization           Organization?      @relation(fields: [organizationId], references: [id])
+  contributor            User               @relation("StandardContributor", fields: [contributorId], references: [id])
+  reviewer               User?              @relation("StandardReviewer", fields: [reviewerId], references: [id])
+
+  hierarchyNodes         StandardHierarchyNode[]
+  revisions              StandardRevision[]
+  complianceMappings     ComplianceMapping[]
+  decisions              EngineeringDecision[]
+  tasks                  EngineeringTask[]
+
+  @@index([standardNumber])
+  @@index([standardFamily])
+  @@index([status])
+  @@index([domainId])
+  @@index([industryId])
+}
+
+model StandardHierarchyNode {
+  id              String                @id @default(uuid()) @db.Uuid
+  standardId      String                @db.Uuid
+  parentId        String?               @db.Uuid
+  nodeType        StandardHierarchyType @default(CLAUSE) // CHAPTER, SECTION, SUBSECTION, REQUIREMENT, CLAUSE, PARAGRAPH, FIGURE, TABLE
+  identifier      String                // e.g. "Section 4.2.1", "Clause 6.4.a", "Table 3"
+  title           String
+  content         String
+  requirementText String?
+  orderIndex      Int                   @default(1)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  standard        StandardRecord        @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  parent          StandardHierarchyNode? @relation("StandardHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children        StandardHierarchyNode[] @relation("StandardHierarchy")
+
+  complianceMappings ComplianceMapping[]
+
+  @@index([standardId])
+  @@index([identifier])
+  @@index([nodeType])
+}
+
+model StandardRevision {
+  id                String         @id @default(uuid()) @db.Uuid
+  standardId        String         @db.Uuid
+  revision          String
+  releaseDate       DateTime       @default(now())
+  changeSummary     String
+  differencesJson   String?
+  migrationNotes    String?
+  successorRevision String?
+  createdAt         DateTime       @default(now())
+
+  standard          StandardRecord @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@index([standardId])
+}
+
+model ComplianceMapping {
+  id                 String             @id @default(uuid()) @db.Uuid
+  knowledgeEntryId   String?            @db.Uuid
+  failureRecordId    String?            @db.Uuid
+  evidenceRecordId   String?            @db.Uuid
+  standardId         String             @db.Uuid
+  hierarchyNodeId    String?            @db.Uuid
+  complianceStatus   ComplianceStatus   @default(COMPLIANT)
+  verificationStatus VerificationStatus @default(VERIFIED)
+  complianceNotes    String?
+  missingEvidence    String?
+  openIssues         String?
+  reviewerId         String?            @db.Uuid
+  verifiedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  knowledgeEntry     KnowledgeEntry?    @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+  failureRecord      FailureRecord?     @relation(fields: [failureRecordId], references: [id], onDelete: Cascade)
+  evidenceRecord     EvidenceRecord?    @relation(fields: [evidenceRecordId], references: [id], onDelete: Cascade)
+  standard           StandardRecord     @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  hierarchyNode      StandardHierarchyNode? @relation(fields: [hierarchyNodeId], references: [id])
+  reviewer           User?              @relation("ComplianceReviewer", fields: [reviewerId], references: [id])
+
+  @@index([standardId])
+  @@index([complianceStatus])
+  @@index([verificationStatus])
+}
+
+model StandardImpactReport {
+  id                 String   @id @default(uuid()) @db.Uuid
+  standardId         String   @db.Uuid
+  oldRevision        String
+  newRevision        String
+  affectedKnowledge  Int      @default(0)
+  affectedFailures   Int      @default(0)
+  affectedEvidence   Int      @default(0)
+  impactSummary      String
+  actionItemsJson    String
+  requiresHumanReview Boolean @default(true)
+  status             String   @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED
+  createdAt          DateTime @default(now())
+
+  @@index([standardId])
+}
+
+model EngineeringDecision {
+  id                   String            @id @default(uuid()) @db.Uuid
+  title                String
+  decisionSummary      String
+  detailedRationale    String
+  alternativesConsidered String
+  chosenOption         String
+  tradeoffs            String
+  risks                String
+  status               DecisionStatus    @default(DRAFT)
+  version              Int               @default(1)
+  approvalDate         DateTime?
+  domainId             String            @db.Uuid
+  industryId           String            @db.Uuid
+  organizationId       String?           @db.Uuid
+  ownerId              String            @db.Uuid
+  knowledgeEntryId     String?           @db.Uuid
+  failureRecordId      String?           @db.Uuid
+  evidenceRecordId     String?           @db.Uuid
+  standardId           String?           @db.Uuid
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  archivedAt           DateTime?
+
+  domain               EngineeringDomain @relation(fields: [domainId], references: [id])
+  industry             Industry          @relation(fields: [industryId], references: [id])
+  organization         Organization?     @relation(fields: [organizationId], references: [id])
+  owner                User              @relation("DecisionOwner", fields: [ownerId], references: [id])
+
+  knowledgeEntry       KnowledgeEntry?   @relation(fields: [knowledgeEntryId], references: [id])
+  failureRecord        FailureRecord?    @relation(fields: [failureRecordId], references: [id])
+  evidenceRecord       EvidenceRecord?   @relation(fields: [evidenceRecordId], references: [id])
+  standard             StandardRecord?   @relation(fields: [standardId], references: [id])
+
+  tasks                EngineeringTask[]
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([domainId])
+}
+
+model EngineeringTask {
+  id                String             @id @default(uuid()) @db.Uuid
+  title             String
+  description       String
+  priority          TaskPriority       @default(MEDIUM)
+  status            TaskStatus         @default(TODO)
+  dueDate           DateTime?
+  assigneeId        String?            @db.Uuid
+  reporterId        String             @db.Uuid
+  organizationId    String?            @db.Uuid
+  knowledgeEntryId  String?            @db.Uuid
+  failureRecordId   String?            @db.Uuid
+  evidenceRecordId  String?            @db.Uuid
+  standardId        String?            @db.Uuid
+  decisionId        String?            @db.Uuid
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reporter          User               @relation("TaskReporter", fields: [reporterId], references: [id])
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
+
+  knowledgeEntry    KnowledgeEntry?    @relation(fields: [knowledgeEntryId], references: [id])
+  failureRecord     FailureRecord?     @relation(fields: [failureRecordId], references: [id])
+  evidenceRecord    EvidenceRecord?    @relation(fields: [evidenceRecordId], references: [id])
+  standard          StandardRecord?    @relation(fields: [standardId], references: [id])
+  decision          EngineeringDecision? @relation(fields: [decisionId], references: [id])
+
+  @@index([status])
+  @@index([priority])
+  @@index([assigneeId])
+}
+
+model ActivityLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  actionType   String   // KNOWLEDGE_CREATED, DECISION_APPROVED, FAILURE_REPORTED, TASK_ASSIGNED, etc.
+  targetType   String   // KNOWLEDGE, DECISION, TASK, FAILURE, EVIDENCE, STANDARD
+  targetId     String
+  summary      String
+  detailsJson  String?
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([actionType])
+  @@index([targetType])
+}
+
+model ItemWatch {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  targetType String   // KNOWLEDGE, DECISION, FAILURE, STANDARD, TASK
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
+}
+
+model IntegrationConnector {
+  id                 String           @id @default(uuid()) @db.Uuid
+  name               String
+  connectorType      ConnectorType    @default(REST_API)
+  status             ConnectorStatus  @default(ACTIVE)
+  healthStatus       ConnectorHealth  @default(HEALTHY)
+  syncDirection      String           @default("INBOUND") // INBOUND, OUTBOUND, BIDIRECTIONAL
+  authMethod         String           @default("OAUTH2") // OAUTH2, API_KEY, BASIC, MUTUAL_TLS, TOKEN
+  baseUrl            String?
+  configJson         String?
+  secretsRef         String?
+  lastSync           DateTime?
+  nextSync           DateTime?
+  errorCount         Int              @default(0)
+  version            Int              @default(1)
+  organizationId     String?          @db.Uuid
+  ownerId            String           @db.Uuid
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  archivedAt         DateTime?
+
+  organization       Organization?    @relation(fields: [organizationId], references: [id])
+  owner              User             @relation("ConnectorOwner", fields: [ownerId], references: [id])
+
+  fieldMappings      IntegrationFieldMapping[]
+  syncJobs           SyncJob[]
+  webhooks           IntegrationWebhook[]
+  syncLineages       SyncLineage[]
+
+  @@index([connectorType])
+  @@index([status])
+  @@index([healthStatus])
+}
+
+model IntegrationFieldMapping {
+  id                 String               @id @default(uuid()) @db.Uuid
+  connectorId        String               @db.Uuid
+  externalField      String               // e.g. "wt.part.WTPartNumber", "sap.material.num"
+  ktnTargetEntity    String               // KNOWLEDGE, FAILURE, EVIDENCE, STANDARD, MATERIAL
+  ktnTargetField     String               // e.g. "title", "problemSummary", "rootCause"
+  transformationRule String?              // e.g. "UPPERCASE", "JSON_PATH", "DEFAULT:PLM"
+  isRequired         Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+
+  connector          IntegrationConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId])
+}
+
+model SyncJob {
+  id                 String               @id @default(uuid()) @db.Uuid
+  connectorId        String               @db.Uuid
+  jobType            String               @default("INCREMENTAL") // FULL, INCREMENTAL, MANUAL
+  status             SyncJobStatus        @default(PENDING)
+  recordsProcessed   Int                  @default(0)
+  recordsSuccess     Int                  @default(0)
+  recordsFailed      Int                  @default(0)
+  errorMessage       String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime             @default(now())
+
+  connector          IntegrationConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  lineages           SyncLineage[]
+
+  @@index([connectorId])
+  @@index([status])
+}
+
+model SyncLineage {
+  id                 String               @id @default(uuid()) @db.Uuid
+  connectorId        String               @db.Uuid
+  syncJobId          String?              @db.Uuid
+  sourceSystem       String               // e.g. "PTC Windchill PLM", "SAP S/4HANA"
+  sourceObjectId     String               // e.g. "WTPart:984210"
+  sourceUrl          String?
+  ktnTargetEntity    String               // KNOWLEDGE, FAILURE, EVIDENCE, STANDARD
+  ktnTargetId        String               @db.Uuid
+  syncVersion        Int                  @default(1)
+  provenanceHash     String?
+  createdAt          DateTime             @default(now())
+
+  connector          IntegrationConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  syncJob            SyncJob?             @relation(fields: [syncJobId], references: [id])
+
+  @@index([sourceObjectId])
+  @@index([connectorId])
+}
+
+model IntegrationWebhook {
+  id                 String               @id @default(uuid()) @db.Uuid
+  connectorId        String               @db.Uuid
+  name               String
+  endpointUrl        String
+  secretKey          String
+  eventTriggersJson  String               // e.g. ["KNOWLEDGE_VERIFIED", "FAILURE_LOGGED"]
+  direction          String               @default("OUTBOUND") // INBOUND, OUTBOUND
+  isActive           Boolean              @default(true)
+  deliveryCount      Int                  @default(0)
+  lastDeliveryStatus String?              // SUCCESS, FAILED
+  lastDeliveryTime   DateTime?
+  createdAt          DateTime             @default(now())
+
+  connector          IntegrationConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId])
+}
+
+model AnalyticsMetric {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String
+  code               String   @unique
+  description        String
+  formula            String
+  dataSource         String   // KNOWLEDGE, FAILURES, EVIDENCE, VERIFICATION, TRANSLATIONS, USERS
+  refreshInterval    String   @default("DAILY") // REALTIME, HOURLY, DAILY, WEEKLY
+  aggregationType    String   @default("COUNT") // COUNT, AVG, SUM, PERCENTAGE, RATIO
+  visualizationType  String   @default("LINE_CHART") // METRIC_CARD, LINE_CHART, BAR_CHART, DONUT, HEATMAP
+  currentValue       Float    @default(0.0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  snapshots          AnalyticsSnapshot[]
+}
+
+model AnalyticsSnapshot {
+  id               String          @id @default(uuid()) @db.Uuid
+  metricId         String          @db.Uuid
+  metricValue      Float
+  periodLabel      String          // e.g. "2026-Q1", "Jul 2026", "2026-07-31"
+  timestamp        DateTime        @default(now())
+
+  metric           AnalyticsMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@index([metricId])
+  @@index([timestamp])
+}
+
+model SavedReport {
+  id               String   @id @default(uuid()) @db.Uuid
+  title            String
+  description      String?
+  reportType       String   @default("EXECUTIVE_SUMMARY") // EXECUTIVE_SUMMARY, KNOWLEDGE_GAP, FAILURE_RPN, VERIFICATION_THROUGHPUT
+  queryConfigJson  String
+  authorId         String   @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  author           User     @relation("ReportAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+}
+
+model ApiKey {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  keyHash        String       @unique
+  scopesJson     String       @default("[\"READ\"]") // READ, WRITE, ADMIN
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  ownerId        String       @db.Uuid
+  organizationId String       @db.Uuid
+  createdAt      DateTime     @default(now())
+
+  owner          User         @relation("ApiKeyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([keyHash])
+  @@index([organizationId])
+}
+
+model SecurityAuditLog {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  actorEmail     String
+  action         String        // LOGIN_SUCCESS, ROLE_UPDATED, APIKEY_CREATED, RETENTION_CHANGED
+  resource       String
+  ipAddress      String?       @default("127.0.0.1")
+  details        String?
+  createdAt      DateTime      @default(now())
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([action])
+}
+
+model EngineeringConversation {
+  id                 String               @id @default(uuid()) @db.Uuid
+  title              String
+  userId             String               @db.Uuid
+  organizationId     String?              @db.Uuid
+  pinnedEntitiesJson String?              @default("[]")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  user               User                 @relation("ConversationUser", fields: [userId], references: [id], onDelete: Cascade)
+  messages           EngineeringMessage[]
+
+  @@index([userId])
+}
+
+model EngineeringMessage {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  conversationId     String                  @db.Uuid
+  sender             String                  // USER, ASSISTANT
+  content            String
+  citationsJson      String?                 @default("[]")
+  confidenceScore    Int                     @default(95)
+  scoreExplanation   String?
+  createdAt          DateTime                @default(now())
+
+  conversation       EngineeringConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model KnowledgeChangeRequest {
+  id                   String         @id @default(uuid()) @db.Uuid
+  ecrNumber            String         @unique // e.g. "ECR-2026-089"
+  title                String
+  description          String
+  reasonForChange      String
+  priority             TaskPriority   @default(MEDIUM)
+  riskLevel            String         @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  status               String         @default("DRAFT") // DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, IMPLEMENTED
+  affectedKnowledgeId  String?        @db.Uuid
+  requesterId          String         @db.Uuid
+  reviewerId           String?        @db.Uuid
+  reviewedAt           DateTime?
+  reviewNotes          String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  affectedKnowledge    KnowledgeEntry? @relation(fields: [affectedKnowledgeId], references: [id])
+  requester            User           @relation("RequestRequester", fields: [requesterId], references: [id])
+  reviewer             User?          @relation("RequestReviewer", fields: [reviewerId], references: [id])
+
+  @@index([ecrNumber])
+  @@index([status])
+}
+
+model KnowledgeRelease {
+  id                 String       @id @default(uuid()) @db.Uuid
+  releaseNumber      String       @unique // e.g. "REL-2026.3"
+  title              String
+  summary            String
+  releaseNotes       String
+  status             String       @default("PLANNED") // PLANNED, IN_REVIEW, PUBLISHED, ROLLED_BACK
+  publisherId        String       @db.Uuid
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  publisher          User         @relation("ReleasePublisher", fields: [publisherId], references: [id])
+
+  @@index([releaseNumber])
+  @@index([status])
+}
+
+model KnowledgeSubscription {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @db.Uuid
+  targetType         String       // KNOWLEDGE, STANDARD, FAILURE, DOMAIN
+  targetId           String
+  emailAlerts        Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
+}
+
+model EngineeringPortfolio {
+  id             String               @id @default(uuid()) @db.Uuid
+  name           String
+  description    String
+  budget         Float                @default(1500000.0)
+  status         String               @default("ACTIVE") // ACTIVE, ON_HOLD, COMPLETED, ARCHIVED
+  organizationId String               @db.Uuid
+  ownerId        String               @db.Uuid
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User                 @relation("PortfolioOwner", fields: [ownerId], references: [id])
+  programs       EngineeringProgram[]
+
+  @@index([organizationId])
+}
+
+model EngineeringProgram {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  portfolioId String               @db.Uuid
+  ownerId     String               @db.Uuid
+  status      String               @default("ACTIVE") // ACTIVE, IN_REVIEW, COMPLETED
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  portfolio   EngineeringPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  owner       User                 @relation("ProgramOwner", fields: [ownerId], references: [id])
+  projects    EngineeringProject[]
+
+  @@index([portfolioId])
+}
+
+model EngineeringProject {
+  id             String               @id @default(uuid()) @db.Uuid
+  name           String
+  code           String               @unique // e.g. "PRJ-AERO-09"
+  description    String
+  phase          String               @default("DETAILED_DESIGN") // CONCEPT, REQUIREMENTS, ARCHITECTURE, PRELIMINARY_DESIGN, DETAILED_DESIGN, PROTOTYPE, QUALIFICATION, PRODUCTION
+  status         String               @default("ACTIVE") // ACTIVE, ON_HOLD, COMPLETED
+  riskLevel      String               @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  programId      String               @db.Uuid
+  organizationId String               @db.Uuid
+  domainId       String               @db.Uuid
+  industryId     String               @db.Uuid
+  ownerId        String               @db.Uuid
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  program        EngineeringProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain         EngineeringDomain    @relation(fields: [domainId], references: [id])
+  industry       Industry             @relation(fields: [industryId], references: [id])
+  owner          User                 @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  milestones     EngineeringMilestone[]
+  knowledge      KnowledgeEntry[]
+
+  @@index([code])
+  @@index([status])
+  @@index([phase])
+}
+
+model EngineeringMilestone {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  dueDate     DateTime
+  status      String             @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, DELAYED
+  projectId   String             @db.Uuid
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  project     EngineeringProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model AutomationRule {
+  id             String             @id @default(uuid()) @db.Uuid
+  name           String
+  triggerEvent   String             // KNOWLEDGE_VERIFIED, FAILURE_REPORTED, EVIDENCE_ADDED, STANDARD_CHANGED
+  conditionsJson String             @default("[]")
+  actionsJson    String             @default("[]")
+  isActive       Boolean            @default(true)
+  organizationId String             @db.Uuid
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runLogs        AutomationRunLog[]
+
+  @@index([organizationId])
+  @@index([triggerEvent])
+}
+
+model AutomationRunLog {
+  id             String         @id @default(uuid()) @db.Uuid
+  ruleId         String         @db.Uuid
+  status         String         @default("SUCCESS") // SUCCESS, FAILED
+  logsJson       String?
+  executionMs    Int            @default(45)
+  createdAt      DateTime       @default(now())
+
+  rule           AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+model DeveloperApp {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  clientId       String       @unique
+  clientSecret   String
+  scopesJson     String       @default("[\"read:knowledge\"]")
+  organizationId String       @db.Uuid
+  ownerId        String       @db.Uuid
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User         @relation("AppOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([organizationId])
+}
+
+model KnowledgeQualityScore {
+  id                  String         @id @default(uuid()) @db.Uuid
+  knowledgeEntryId    String         @db.Uuid
+  completenessScore   Int            @default(90)
+  evidenceScore       Int            @default(85)
+  standardsScore      Int            @default(80)
+  overallQualityScore Int            @default(86)
+  evaluatedAt         DateTime       @default(now())
+
+  knowledgeEntry      KnowledgeEntry @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeEntryId])
+  @@index([overallQualityScore])
+}
+
+model GovernancePolicy {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  policyType     String       // RETENTION, CLASSIFICATION, RE-VERIFICATION, METADATA
+  classification String       @default("CONFIDENTIAL") // PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED, ITAR, EAR
+  retentionYears Int          @default(10)
+  isActive       Boolean      @default(true)
+  organizationId String       @db.Uuid
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([policyType])
+}
+
+model IntegrityReport {
+  id             String       @id @default(uuid()) @db.Uuid
+  reportType     String       @default("SCHEDULED_INTEGRITY_SCAN")
+  issuesFound    Int          @default(0)
+  summary        String
+  detailsJson    String?
+  scannedAt      DateTime     @default(now())
+  organizationId String       @db.Uuid
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model MarketplaceListing {
+  id                 String             @id @default(uuid()) @db.Uuid
+  title              String
+  summary            String
+  licenseType        String             @default("OPEN") // OPEN, COMMERCIAL, PARTNER, INTERNAL
+  visibilityScope    String             @default("PUBLIC") // PUBLIC, PARTNER, CONSORTIUM
+  publisherOrgId     String             @db.Uuid
+  verificationStatus VerificationStatus @default(VERIFIED)
+  price              Float              @default(0.0)
+  downloadCount      Int                @default(42)
+  createdAt          DateTime           @default(now())
+
+  publisherOrg       Organization       @relation(fields: [publisherOrgId], references: [id], onDelete: Cascade)
+
+  @@index([publisherOrgId])
+  @@index([visibilityScope])
+}
+
+model OrgPartnership {
+  id             String       @id @default(uuid()) @db.Uuid
+  requesterOrgId String       @db.Uuid
+  partnerOrgId   String       @db.Uuid
+  status         String       @default("ACTIVE") // PENDING, ACTIVE, REJECTED
+  accessScope    String       @default("FULL_SHARING")
+  createdAt      DateTime     @default(now())
+
+  requesterOrg   Organization @relation("RequesterOrg", fields: [requesterOrgId], references: [id], onDelete: Cascade)
+  partnerOrg     Organization @relation("PartnerOrg", fields: [partnerOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterOrgId, partnerOrgId])
+  @@index([requesterOrgId])
+  @@index([partnerOrgId])
+}
+
+model EngineeringConsortium {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  leadOrgId   String       @db.Uuid
+  createdAt   DateTime     @default(now())
+
+  leadOrg     Organization @relation("LeadOrg", fields: [leadOrgId], references: [id], onDelete: Cascade)
+
+  @@index([leadOrgId])
+}
+
+model IngestionJob {
+  id               String           @id @default(uuid()) @db.Uuid
+  documentId       String           @db.Uuid
+  stage            String           @default("COMPLETED") // VIRUS_SCAN, TEXT_EXTRACTION, OCR, ENTITY_EXTRACTION, COMPLETED
+  status           String           @default("SUCCESS") // PENDING, IN_PROGRESS, SUCCESS, FAILED
+  recordsProcessed Int              @default(12)
+  errorMessage     String?
+  startedAt        DateTime         @default(now())
+  completedAt      DateTime?
+
+  document         IngestedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([status])
+}
+
+model DocumentPage {
+  id            String           @id @default(uuid()) @db.Uuid
+  documentId    String           @db.Uuid
+  pageNumber    Int
+  plainText     String
+  ocrConfidence Float            @default(98.5)
+  createdAt     DateTime         @default(now())
+
+  document      IngestedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model SystemHealthRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  serviceName String   // Database, Search Engine, Ingestion Pipeline, API Gateway, Storage, Redis Cache
+  status      String   @default("HEALTHY") // HEALTHY, DEGRADED, CRITICAL, DOWN
+  healthScore Int      @default(99)
+  latencyMs   Int      @default(14)
+  memoryMb    Float    @default(256.4)
+  errorRate   Float    @default(0.01)
+  lastCheck   DateTime @default(now())
+
+  @@index([serviceName])
+  @@index([status])
+}
+
+model SystemIncident {
+  id              String    @id @default(uuid()) @db.Uuid
+  title           String
+  severity        String    @default("MINOR") // MINOR, MAJOR, CRITICAL
+  status          String    @default("RESOLVED") // INVESTIGATING, IDENTIFIED, MONITORING, RESOLVED
+  affectedService String
+  rootCause       String?
+  ownerId         String?   @db.Uuid
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  owner           User?     @relation("IncidentOwner", fields: [ownerId], references: [id])
+
+  @@index([status])
+  @@index([severity])
+}
+
+model FeatureFlag {
+  id                String   @id @default(uuid()) @db.Uuid
+  key               String   @unique // e.g. "ENABLE_QUANTUM_TRANSLATION", "ENABLE_OCR_AI"
+  name              String
+  description       String
+  isEnabled         Boolean  @default(true)
+  rolloutPercentage Int      @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([key])
+}
+
+model SystemBackupRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  backupType String   @default("DATABASE_SNAPSHOT") // DATABASE_SNAPSHOT, CONFIG_BACKUP, METADATA_BACKUP
+  status     String   @default("COMPLETED") // PENDING, RUNNING, COMPLETED, FAILED
+  sizeMb     Float    @default(512.8)
+  checksum   String   @default("sha256-f8e9a0b1c2d3")
+  createdBy  String   @default("AUTOMATED_CRON")
+  createdAt  DateTime @default(now())
+
+  @@index([status])
+}
+
+// ----------------------------------------------------
+// ENTERPRISE DEPLOYMENT & DEVOPS PLATFORM
+// ----------------------------------------------------
+
+model SystemDeploymentRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  environment    String   @default("PRODUCTION") // PRODUCTION, STAGING, DEV, DR
+  deploymentMode String   // MULTI_TENANT_SAAS, SINGLE_TENANT, SELF_HOSTED, AIR_GAPPED
+  version        String   @default("v1.0.0")
+  status         String   @default("SUCCESS") // PENDING, IN_PROGRESS, SUCCESS, ROLLED_BACK
+  deployedBy     String   @default("CI_CD_WORKFLOW")
+  deployedAt     DateTime @default(now())
+
+  @@index([environment])
+  @@index([status])
+}
+
+model DeploymentEnvironmentConfig {
+  id                String   @id @default(uuid()) @db.Uuid
+  envName           String   @unique // PRODUCTION, STAGING, DEV, AIR_GAPPED
+  region            String   @default("US-EAST-1")
+  maxReplicas       Int      @default(10)
+  storageProvider   String   @default("S3_COMPATIBLE") // LOCAL, S3_COMPATIBLE, AZURE_BLOB, GCS
+  isMaintenanceMode Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([envName])
+}
