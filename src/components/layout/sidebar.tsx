@@ -47,6 +47,11 @@ import {
   ToggleLeft,
   Server,
   Globe,
+  GitMerge,
+  Link2,
+  Lightbulb,
+  TrendingUp,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +105,17 @@ export function Sidebar({ userRole = 'ENGINEER' }: SidebarProps) {
     { name: 'Organization', href: '/dashboard#organization', icon: Building2 },
     { name: 'My Profile', href: '/profile', icon: User },
     { name: 'Settings', href: '/settings', icon: Settings },
+  ];
+
+  const innovationNavigation = [
+    { name: 'Innovation Dashboard', href: '/dashboard', icon: Sparkles },
+    { name: 'Innovation Opportunities', href: '/discovery/opportunities', icon: Lightbulb },
+    { name: 'Cross-Domain Discoveries', href: '/discovery/transfers', icon: GitMerge },
+    { name: 'Engineering Analogies', href: '/discovery/analogies', icon: Layers },
+    { name: 'Hidden Relationships', href: '/discovery/relationships', icon: Link2 },
+    { name: 'Knowledge Gaps', href: '/discovery/gaps', icon: AlertTriangle },
+    { name: 'Recurring Failures', href: '/discovery/failures', icon: TrendingUp },
+    { name: 'Emerging Themes', href: '/discovery/themes', icon: RefreshCw },
   ];
 
   return (
@@ -196,8 +212,34 @@ export function Sidebar({ userRole = 'ENGINEER' }: SidebarProps) {
           </div>
         )}
 
-        <div className="px-3 pb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-          Platform Menu
+        <div className="px-3 pb-2 text-[11px] font-semibold text-blue-500 uppercase tracking-wider flex items-center space-x-1.5">
+          <Sparkles className="w-3 h-3" />
+          <span>Innovation Discovery</span>
+        </div>
+        {innovationNavigation.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                'flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
+                isActive
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+
+        <div className="pt-3 border-t border-border mt-3">
+          <div className="px-3 pb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Platform Menu
+          </div>
         </div>
         {navigation.map((item) => {
           const isActive = pathname === item.href;

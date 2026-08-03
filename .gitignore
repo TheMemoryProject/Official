@@ -19,7 +19,12 @@ yarn-debug.log*
 lerna-debug.log*
 
 # local env files
+.env
 .env*.local
+D:\KTN-DB
+
+# stray nested clone
+/Official
 
 # vercel
 .vercel

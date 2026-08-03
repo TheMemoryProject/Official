@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import {
   ShieldCheck,
   AlertTriangle,
@@ -11,12 +12,16 @@ import {
   FileText,
   Activity,
   CheckCircle,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db';
+import { getInnovationDashboard } from '@/lib/innovation/innovation-engine';
+import { OpportunityCard, EnginePulse } from '@/components/innovation/opportunity-card';
 import { DashboardClientActions } from './dashboard-client-actions';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +29,7 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   const session = await getSession();
 
-  const [solutionsCount, problemsCount, unverifiedCount, recentSolutions, recentProblems] = await Promise.all([
+  const [solutionsCount, problemsCount, unverifiedCount, recentSolutions, recentProblems, innovation] = await Promise.all([
     prisma.verifiedSolution.count({ where: { deletedAt: null } }),
     prisma.engineeringProblem.count({ where: { deletedAt: null } }),
     prisma.verifiedSolution.count({ where: { verificationStatus: 'UNVERIFIED', deletedAt: null } }),
@@ -50,6 +55,10 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 4,
     }),
+    getInnovationDashboard().catch((error) => {
+      console.error('Innovation engine unavailable on dashboard:', error);
+      return null;
+    }),
   ]);
 
   return (
@@ -57,13 +66,59 @@ export default async function DashboardPage() {
       {/* Dashboard Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Engineering Knowledge Desk</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">Innovation Discovery Workspace</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Verification-first solution registry for {session?.organizationName || 'Engineering Organization'}
+            Continuous engineering innovation for {session?.organizationName || 'Engineering Organization'} — every subsystem feeds the Innovation Engine
           </p>
         </div>
         <DashboardClientActions userRole={session?.role} />
       </div>
+
+      {/* Innovation Engine Summary */}
+      {innovation && (
+        <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-transparent p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div className="flex items-center gap-3">
+              <EnginePulse />
+              <div>
+                <h2 className="text-lg font-bold tracking-tight flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-400" />
+                  Innovation Engine
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {innovation.summary}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/discovery/opportunities"
+              className="inline-flex items-center gap-1 h-9 rounded-md px-3 text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            >
+              Explore all opportunities <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            {[
+              { label: 'Opportunities', value: innovation.recommendations.length },
+              { label: 'Cross-Domain', value: innovation.crossDomainTransfers.length },
+              { label: 'Hidden Relationships', value: innovation.hiddenRelationships.length },
+              { label: 'Knowledge Gaps', value: innovation.knowledgeGaps.length },
+            ].map((m) => (
+              <Card key={m.label} className="border-border bg-card/50 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{m.label}</p>
+                <p className="text-2xl font-black text-blue-400">{m.value}</p>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {innovation.recommendations.slice(0, 3).map((o) => (
+              <OpportunityCard key={o.id} opportunity={o} detailHref="/discovery/opportunities" />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Analytics Metric Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

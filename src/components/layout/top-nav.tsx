@@ -14,6 +14,7 @@ interface TopNavProps {
     email: string;
     role: string;
     organizationName?: string | null;
+    isGuest?: boolean;
   };
   onOpenSearch: () => void;
 }
@@ -38,11 +39,11 @@ export function TopNav({ user, onOpenSearch }: TopNavProps) {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
       toast({
-        title: 'Logged out',
-        description: 'You have been safely signed out of KTN',
+        title: 'Session reset',
+        description: 'KTN continues in open guest discovery mode',
         type: 'success',
       });
-      router.push('/login');
+      router.push('/dashboard');
       router.refresh();
     } catch (error) {
       toast({
@@ -95,7 +96,9 @@ export function TopNav({ user, onOpenSearch }: TopNavProps) {
             <Avatar name={user?.fullName || 'User'} size="sm" />
             <div className="hidden md:block text-left pr-2">
               <p className="text-xs font-semibold leading-none">{user?.fullName || 'Engineer'}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{user?.role || 'ENGINEER'}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {user?.isGuest ? 'GUEST MODE' : user?.role || 'ENGINEER'}
+              </p>
             </div>
           </button>
 
@@ -127,15 +130,17 @@ export function TopNav({ user, onOpenSearch }: TopNavProps) {
                   <span>Settings & RBAC</span>
                 </button>
               </div>
-              <div className="pt-1 border-t border-border mt-1">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-medium rounded-md text-rose-500 hover:bg-rose-500/10 text-left transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
+              {!user?.isGuest && (
+                <div className="pt-1 border-t border-border mt-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-medium rounded-md text-rose-500 hover:bg-rose-500/10 text-left transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
