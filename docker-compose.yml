@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  db:
+    build:
+      context: ./db
+    image: ktn-debkg-db
+    environment:
+      POSTGRES_USER: ktn_app
+      POSTGRES_PASSWORD: ktn_app_password
+      POSTGRES_DB: ktn_debkg
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ktn_app -d ktn_debkg"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - ktn_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    image: ktn-debkg-backend
+    environment:
+      PORT: "3001"
+      HOST: "0.0.0.0"
+      DATABASE_URL: "postgresql://ktn_app_runtime:ktn_app_runtime_password@db:5432/ktn_debkg"
+      TENANT_ID: "00000000-0000-0000-0000-000000000001"
+      GRADIENT_CHECK_ON_BOOT: "true"
+      LOG_LEVEL: "info"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:3001"
+    image: ktn-debkg-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  ktn_db_data:
